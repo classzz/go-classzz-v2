@@ -265,8 +265,8 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
 	args := struct {
-		AssetType   uint8
-		ConvertType uint8
+		AssetType   *big.Int
+		ConvertType *big.Int
 		TxHash      string
 	}{}
 
@@ -292,25 +292,27 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	var item *types.ConvertItem
-	switch args.AssetType {
+	AssetType := uint8(args.AssetType.Uint64())
+	ConvertType := uint8(args.ConvertType.Uint64())
+	switch AssetType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	}
@@ -335,7 +337,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := abiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.AssetType, item.ConvertType, item.TxHash, item.PubKey, item.ToToken, item.Committee, item.Amount, item.FeeAmount)
+	logData, err := event.Inputs.Pack(args.AssetType, args.ConvertType, item.TxHash, item.ToToken, item.PubKey, item.Committee, item.Amount, item.FeeAmount)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -361,8 +363,8 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
 	args := struct {
-		AssetType   uint8
-		ConvertType uint8
+		AssetType   *big.Int
+		ConvertType *big.Int
 		TxHash      string
 	}{}
 
@@ -388,25 +390,28 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	var item *types.ConvertItem
-	switch args.AssetType {
+	AssetType := uint8(args.AssetType.Uint64())
+	ConvertType := uint8(args.ConvertType.Uint64())
+
+	switch AssetType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, args.AssetType, args.ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
 			return nil, err
 		}
 	}
@@ -451,7 +456,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
 	args := struct {
-		ConvertType uint8
+		ConvertType *big.Int
 		Amount      *big.Int
 		ToToken     string
 	}{}
@@ -472,9 +477,10 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		log.Error("Staking load error", "error", err)
 		return nil, err
 	}
+	ConvertType := uint8(args.ConvertType.Uint64())
 
 	item := &types.ConvertItem{
-		ConvertType: args.ConvertType,
+		ConvertType: ConvertType,
 		ToToken:     args.ToToken,
 		Amount:      args.Amount,
 	}
@@ -833,25 +839,7 @@ const TeWakaABI = `
 {
     "name": "convert",
     "inputs": [
-      {
-        "type": "uint256",
-        "name": "AssetType"
-      },{
-        "type": "uint256",
-        "name": "ConvertType"
-      },{
-        "type": "string",
-        "name": "TxHash"
-      }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "convert",
-    "outputs": [],
-    "inputs": [
-      {
+       {
         "type": "uint256",
         "name": "AssetType"
       },{
@@ -877,12 +865,12 @@ const TeWakaABI = `
         "name": "FeeAmount"
       }
     ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
+    "anonymous": false,
+    "type": "event"
   },
-{
-    "name": "confirm",
+  {
+    "name": "convert",
+    "outputs": [],
     "inputs": [
       {
         "type": "uint256",
@@ -895,12 +883,12 @@ const TeWakaABI = `
         "name": "TxHash"
       }
     ],
-    "anonymous": false,
-    "type": "event"
+    "constant": false,
+    "payable": false,
+    "type": "function"
   },
-  {
+{
     "name": "confirm",
-    "outputs": [],
     "inputs": [
       {
         "type": "uint256",
@@ -925,6 +913,24 @@ const TeWakaABI = `
         "name": "FeeAmount"
       }
     ],
+    "anonymous": false,
+    "type": "event"
+  },
+  {
+    "name": "confirm",
+    "outputs": [],
+    "inputs": [
+      {
+        "type": "uint256",
+        "name": "AssetType"
+      },{
+        "type": "uint256",
+        "name": "ConvertType"
+      },{
+        "type": "string",
+        "name": "TxHash"
+      }
+    ],
     "constant": false,
     "payable": false,
     "type": "function"
@@ -932,12 +938,15 @@ const TeWakaABI = `
 {
     "name": "casting",
     "inputs": [
-      {
+  {
         "type": "uint256",
-        "name": "AssetType"
+        "name": "ConvertType"
       },{
         "type": "uint256",
         "name": "Amount"
+      },{
+        "type": "bytes",
+        "name": "PubKey"
       },{
         "type": "string",
         "name": "ToToken"
@@ -950,15 +959,12 @@ const TeWakaABI = `
     "name": "casting",
     "outputs": [],
     "inputs": [
-      {
+       {
         "type": "uint256",
-        "name": "ConvertType"
+        "name": "AssetType"
       },{
         "type": "uint256",
         "name": "Amount"
-      },{
-        "type": "bytes",
-        "name": "PubKey"
       },{
         "type": "string",
         "name": "ToToken"

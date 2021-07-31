@@ -44,29 +44,83 @@ var (
 	}
 	PubKeyKeyFlag = cli.StringFlag{
 		Name:  "pubkey",
-		Usage: "Committee public key for BFT (no 0x prefix)",
+		Usage: "",
 		Value: "",
 	}
 	BFTKeyKeyFlag = cli.StringFlag{
 		Name:  "bftkey",
-		Usage: "Committee bft key for BFT (no 0x prefix)",
+		Usage: "",
 		Value: "",
 	}
 
 	MortgageFlags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "mortgage.toaddress",
-			Usage: "Committee bft key for BFT (no 0x prefix)",
+			Usage: "",
 			Value: "",
 		},
 		cli.StringFlag{
 			Name:  "mortgage.stakingamount",
-			Usage: "Committee bft key for BFT (no 0x prefix)",
+			Usage: "",
 			Value: "",
 		},
 		cli.StringFlag{
 			Name:  "mortgage.coinbaseaddress",
-			Usage: "Committee bft key for BFT (no 0x prefix)",
+			Usage: "",
+			Value: "",
+		},
+	}
+
+	ConvertFlags = []cli.Flag{
+		cli.Uint64Flag{
+			Name:  "convert.assettype",
+			Usage: "",
+			Value: 0,
+		},
+		cli.Uint64Flag{
+			Name:  "convert.converttype",
+			Usage: "",
+			Value: 0,
+		},
+		cli.StringFlag{
+			Name:  "convert.txhash",
+			Usage: "",
+			Value: "",
+		},
+	}
+
+	ConfirmFlags = []cli.Flag{
+		cli.Uint64Flag{
+			Name:  "confirm.assettype",
+			Usage: "",
+			Value: 0,
+		},
+		cli.Uint64Flag{
+			Name:  "confirm.converttype",
+			Usage: "",
+			Value: 0,
+		},
+		cli.StringFlag{
+			Name:  "confirm.txhash",
+			Usage: "",
+			Value: "",
+		},
+	}
+
+	CastingFlags = []cli.Flag{
+		cli.Uint64Flag{
+			Name:  "casting.assettype",
+			Usage: "",
+			Value: 0,
+		},
+		cli.Uint64Flag{
+			Name:  "casting.amount",
+			Usage: "",
+			Value: 0,
+		},
+		cli.StringFlag{
+			Name:  "casting.totoken",
+			Usage: "",
 			Value: "",
 		},
 	}
@@ -79,9 +133,22 @@ var (
 		CzzValueFlag,
 		PubKeyKeyFlag,
 		BFTKeyKeyFlag,
+
 		MortgageFlags[0],
 		MortgageFlags[1],
 		MortgageFlags[2],
+
+		ConvertFlags[0],
+		ConvertFlags[1],
+		ConvertFlags[2],
+
+		ConfirmFlags[0],
+		ConfirmFlags[1],
+		ConfirmFlags[2],
+
+		CastingFlags[0],
+		CastingFlags[1],
+		CastingFlags[2],
 	}
 )
 
@@ -92,14 +159,14 @@ func init() {
 	app.Version = "1.0.0"
 	app.Copyright = "Copyright 2019-2021 The Classzz Authors"
 	app.Flags = TeWakaFlags
-	//app.Action = utils.MigrateFlags(impawn)
-	//app.CommandNotFound = func(ctx *cli.Context, cmd string) {
-	//	fmt.Fprintf(os.Stderr, "No such command: %s\n", cmd)
-	//	os.Exit(1)
-	//}
+
 	// Add subcommands.
 	app.Commands = []cli.Command{
 		MortgageCommand,
+		UpdateCommand,
+		ConvertCommand,
+		ConfirmCommand,
+		CastingCommand,
 	}
 	cli.CommandHelpTemplate = flags.CommandHelpTemplate
 	sort.Sort(cli.CommandsByName(app.Commands))

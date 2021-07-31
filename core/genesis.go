@@ -385,9 +385,12 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(100),
 		Alloc: map[common.Address]GenesisAccount{
-			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)}, // ECRecover
-			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)}, // SHA256
-			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)}, // RIPEMD
+			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)},        // ECRecover
+			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)},        // SHA256
+			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)},        // RIPEMD
+			common.BytesToAddress([]byte{101}):                                {Balance: new(big.Int).Set(i2)}, // eth
+			common.BytesToAddress([]byte{102}):                                {Balance: new(big.Int).Set(i2)}, // heco
+			common.BytesToAddress([]byte{103}):                                {Balance: new(big.Int).Set(i2)}, // bsc
 			common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"): {Balance: new(big.Int).Set(i1)},
 			common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"): {Balance: new(big.Int).Set(i1)},
 			common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"): {Balance: new(big.Int).Set(i1)},
