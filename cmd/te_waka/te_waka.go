@@ -96,14 +96,14 @@ func sendContractTransaction(client *czzclient.Client, from, toAddress common.Ad
 
 	gasLimit := uint64(2100000) // in units
 	// If the contract surely has code (or code is not needed), estimate the transaction
-	msg := classzz.CallMsg{From: from, To: &toAddress, GasPrice: gasPrice, Value: value, Data: input}
-	gasLimit, err = client.EstimateGas(context.Background(), msg)
-	if err != nil {
-		fmt.Println("Contract exec failed", err)
-	}
-	if gasLimit < 1 {
-		gasLimit = 866328
-	}
+	//msg := classzz.CallMsg{From: from, To: &toAddress, GasPrice: gasPrice, Value: value, Data: input}
+	//gasLimit, err = client.EstimateGas(context.Background(), msg)
+	//if err != nil {
+	//	fmt.Println("Contract exec failed", err)
+	//}
+	//if gasLimit < 1 {
+	//	gasLimit = 866328
+	//}
 
 	// Create the transaction, sign it and schedule it for execution
 	tx := types.NewTransaction(nonce, toAddress, value, gasLimit, gasPrice, input)

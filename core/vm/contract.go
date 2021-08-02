@@ -208,7 +208,7 @@ func (c *tewaka) RequiredGas(evm *EVM, input []byte) uint64 {
 		err     error
 	)
 
-	method, err = abiTeWaKa.MethodById(input)
+	method, err = AbiTeWaKa.MethodById(input)
 
 	if err != nil {
 		return baseGas

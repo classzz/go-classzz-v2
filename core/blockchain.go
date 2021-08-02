@@ -341,9 +341,9 @@ func NewBlockChain(db czzdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
-	amount,_ := bc.GetCurrentStakingByUser(bc.CurrentHeader().Coinbase)
+	amount, _ := bc.GetCurrentStakingByUser(bc.CurrentHeader().Coinbase)
 	factor := consensus.MakeFactorForMine(amount)
-	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true,factor)
+	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true, factor)
 
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for hash := range BadHashes {
@@ -1451,6 +1451,29 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
+	//for _, v:= range block.Transactions(){
+	//	if *v.To() == vm.TeWaKaAddress{
+	//
+	//		args := struct {
+	//			AssetType   *big.Int
+	//			ConvertType *big.Int
+	//			TxHash      string
+	//		}{}
+	//
+	//		method, _ := vm.AbiTeWaKa.MethodById(v.Data())
+	//		if method.Name == "convert" {
+	//			method, _ := vm.AbiTeWaKa.Methods["convert"]
+	//			err = method.Inputs.UnpackAtomic(&args, v.Data())
+	//		}else if method.Name == "confirm" {
+	//			method, _ := vm.AbiTeWaKa.Methods["confirm"]
+	//			err = method.Inputs.UnpackAtomic(&args, v.Data())
+	//		}else {
+	//			break
+	//		}
+	//		state.WriteRecord(common.HexToHash(args.TxHash))
+	//	}
+	//}
+
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -1690,11 +1713,11 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	for i, block := range chain {
 		headers[i] = block.Header()
 		seals[i] = verifySeals
-		amount,_ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
+		amount, _ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
 		factor := consensus.MakeFactorForMine(amount)
 		factors[i] = factor
 	}
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals,factors)
+	abort, results := bc.engine.VerifyHeaders(bc, headers, seals, factors)
 	defer close(abort)
 
 	// Peek the error for the first block to decide the directing import logic
@@ -2390,12 +2413,12 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 	start := time.Now()
 	factors := make([]*big.Int, len(chain))
 
-	for i,hh := range chain {
-		amount,_ := bc.GetCurrentStakingByUser(hh.Coinbase)
+	for i, hh := range chain {
+		amount, _ := bc.GetCurrentStakingByUser(hh.Coinbase)
 		factor := consensus.MakeFactorForMine(amount)
 		factors[i] = factor
 	}
-	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq,factors); err != nil {
+	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq, factors); err != nil {
 		return i, err
 	}
 
@@ -2524,13 +2547,13 @@ func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscr
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
 }
 
-func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int,error) {
+func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int, error) {
 	// maybe get cache on here
 	i := vm.NewTeWakaImpl()
-	state,err := bc.State()
+	state, err := bc.State()
 	if err != nil {
 		i.Load(state, vm.TeWaKaAddress)
-		return i.GetStakingByUser(address),nil
+		return i.GetStakingByUser(address), nil
 	}
-	return nil,nil
+	return nil, nil
 }

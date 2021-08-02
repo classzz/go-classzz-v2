@@ -76,18 +76,18 @@ var TeWaKaGas = map[string]uint64{
 }
 
 // Staking contract ABI
-var abiTeWaKa abi.ABI
+var AbiTeWaKa abi.ABI
 
 type StakeContract struct{}
 
 func init() {
-	abiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
+	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
 }
 
 // RunStaking execute staking contract
 func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 
-	method, err := abiTeWaKa.MethodById(input)
+	method, err := AbiTeWaKa.MethodById(input)
 
 	if err != nil {
 		log.Error("No method found")
@@ -146,7 +146,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 		StakingAmount   *big.Int
 		CoinBaseAddress []common.Address
 	}{}
-	method, _ := abiTeWaKa.Methods["mortgage"]
+	method, _ := AbiTeWaKa.Methods["mortgage"]
 
 	err = method.Inputs.UnpackAtomic(&args, input)
 	if err != nil {
@@ -184,7 +184,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 	evm.StateDB.AddBalance(args.ToAddress, args.StakingAmount)
 
 	t4 := time.Now()
-	event := abiTeWaKa.Events["mortgage"]
+	event := AbiTeWaKa.Events["mortgage"]
 	logData, err := event.Inputs.Pack(args.ToAddress, args.StakingAmount, args.CoinBaseAddress)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
@@ -212,7 +212,7 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 		CoinBaseAddress []common.Address
 	}{}
 
-	method, _ := abiTeWaKa.Methods["update"]
+	method, _ := AbiTeWaKa.Methods["update"]
 	err = method.Inputs.UnpackAtomic(&args, input)
 	if err != nil {
 		log.Error("Unpack deposit pubkey error", "err", err)
@@ -240,7 +240,7 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 	}
 
 	t4 := time.Now()
-	event := abiTeWaKa.Events["update"]
+	event := AbiTeWaKa.Events["update"]
 	logData, err := event.Inputs.Pack(args.CoinBaseAddress)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
@@ -270,7 +270,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		TxHash      string
 	}{}
 
-	method, _ := abiTeWaKa.Methods["convert"]
+	method, _ := AbiTeWaKa.Methods["convert"]
 	err = method.Inputs.UnpackAtomic(&args, input)
 	if err != nil {
 		log.Error("Unpack convert pubkey error", "err", err)
@@ -333,10 +333,9 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		log.Error("Staking save state error", "error", err)
 		return nil, err
 	}
-	evm.StateDB.WriteRecord(common.HexToHash(args.TxHash))
 
 	t4 := time.Now()
-	event := abiTeWaKa.Events["convert"]
+	event := AbiTeWaKa.Events["convert"]
 	logData, err := event.Inputs.Pack(args.AssetType, args.ConvertType, item.TxHash, item.ToToken, item.PubKey, item.Committee, item.Amount, item.FeeAmount)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
@@ -368,7 +367,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		TxHash      string
 	}{}
 
-	method, _ := abiTeWaKa.Methods["confirm"]
+	method, _ := AbiTeWaKa.Methods["confirm"]
 	err = method.Inputs.UnpackAtomic(&args, input)
 	if err != nil {
 		log.Error("Unpack convert pubkey error", "err", err)
@@ -429,7 +428,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	evm.StateDB.WriteRecord(common.HexToHash(args.TxHash))
 
 	t4 := time.Now()
-	event := abiTeWaKa.Events["confirm"]
+	event := AbiTeWaKa.Events["confirm"]
 	logData, err := event.Inputs.Pack(item.AssetType, item.ConvertType, item.TxHash, item.PubKey, item.ToToken, item.Amount, item.FeeAmount)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
@@ -461,7 +460,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		ToToken     string
 	}{}
 
-	method, _ := abiTeWaKa.Methods["casting"]
+	method, _ := AbiTeWaKa.Methods["casting"]
 	err = method.Inputs.UnpackAtomic(&args, input)
 	if err != nil {
 		log.Error("Unpack convert pubkey error", "err", err)
@@ -502,7 +501,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	t4 := time.Now()
-	event := abiTeWaKa.Events["casting"]
+	event := AbiTeWaKa.Events["casting"]
 	logData, err := event.Inputs.Pack(item.ConvertType, item.Amount, item.PubKey, item.ToToken)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
