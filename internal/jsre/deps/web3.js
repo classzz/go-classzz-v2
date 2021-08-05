@@ -1903,9 +1903,9 @@ var unitMap = {
     'microether':   '1000000000000',
     'micro':        '1000000000000',
     'finney':       '1000000000000000',
-    'milliether':    '1000000000000000',
-    'milli':         '1000000000000000',
-    'czz':        '1000000000000000000',
+    'milliether':   '1000000000000000',
+    'milli':        '1000000000000000',
+    'czz':          '1000000000000000000',
     'kether':       '1000000000000000000000',
     'grand':        '1000000000000000000000',
     'mether':       '1000000000000000000000000',
@@ -2513,7 +2513,7 @@ var DB = require('./web3/methods/db');
 var Shh = require('./web3/methods/shh');
 var Net = require('./web3/methods/net');
 var Personal = require('./web3/methods/personal');
-var Swarm = require('./web3/methods/swarm');
+var TeWaKa = require('./web3/methods/tewaka');
 var Settings = require('./web3/settings');
 var version = require('./version.json');
 var utils = require('./utils/utils');
@@ -2535,6 +2535,7 @@ function Web3 (provider) {
     this.shh = new Shh(this);
     this.net = new Net(this);
     this.personal = new Personal(this);
+    this.tewaka = new TeWaKa(this);
     this.settings = new Settings();
     this.version = {
         api: version.version
@@ -2631,7 +2632,7 @@ Web3.prototype.createBatch = function () {
 module.exports = Web3;
 
 
-},{"./utils/sha3":19,"./utils/utils":20,"./version.json":21,"./web3/batch":24,"./web3/extend":28,"./web3/httpprovider":32,"./web3/iban":33,"./web3/ipcprovider":34,"./web3/methods/db":37,"./web3/methods/eth":38,"./web3/methods/net":39,"./web3/methods/personal":40,"./web3/methods/shh":41,"./web3/methods/swarm":42,"./web3/property":45,"./web3/requestmanager":46,"./web3/settings":47,"bignumber.js":"bignumber.js"}],23:[function(require,module,exports){
+},{"./utils/sha3":19,"./utils/utils":20,"./version.json":21,"./web3/batch":24,"./web3/extend":28,"./web3/httpprovider":32,"./web3/iban":33,"./web3/ipcprovider":34,"./web3/methods/db":37,"./web3/methods/eth":38,"./web3/methods/net":39,"./web3/methods/personal":40,"./web3/methods/shh":41,"./web3/property":45,"./web3/requestmanager":46,"./web3/settings":47,"./web3/methods/tewaka":87,"bignumber.js":"bignumber.js"}],23:[function(require,module,exports){
 /*
     This file is part of web3.js.
 
@@ -5274,14 +5275,6 @@ var methods = function () {
         outputFormatter: formatters.outputBigNumberFormatter
     });
 
-    var getLockBalance = new Method({
-      name: 'getLockBalance',
-      call: 'czz_getLockBalance',
-      params: 2,
-      inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter],
-      outputFormatter: formatters.outputBigNumberFormatter
-    });
-
     var getStorageAt = new Method({
         name: 'getStorageAt',
         call: 'eth_getStorageAt',
@@ -5440,7 +5433,6 @@ var methods = function () {
 
     return [
         getBalance,
-        getLockBalance,
         getStorageAt,
         getCode,
         getBlock,
@@ -13616,7 +13608,66 @@ module.exports = transfer;
 },{}],86:[function(require,module,exports){
 module.exports = XMLHttpRequest;
 
-},{}],"bignumber.js":[function(require,module,exports){
+},{}],87:[function(require,module,exports){
+
+"use strict";
+
+var Method = require('../method');
+var Iban = require('../iban');
+var transfer = require('../transfer');
+
+function Tewaka(web3) {
+  this._requestManager = web3._requestManager;
+
+  var self = this;
+
+  methods().forEach(function(method) {
+    method.attachToObject(self);
+    method.setRequestManager(self._requestManager);
+  });
+
+  properties().forEach(function(p) {
+    p.attachToObject(self);
+    p.setRequestManager(self._requestManager);
+  });
+
+
+  this.iban = Iban;
+  this.sendIBANTransaction = transfer.bind(null, this);
+}
+
+var methods = function () {
+
+  var getPledgeInfo = new Method({
+    name: 'getPledgeInfo',
+    call: 'tewaka_getPledgeInfo',
+    params: 0,
+  });
+
+  var getConvertItems = new Method({
+    name: 'getConvertItems',
+    call: 'tewaka_getConvertItems',
+    params: 0,
+  });
+
+  return [
+    getPledgeInfo,
+    getConvertItems,
+  ];
+};
+
+var properties = function () {
+  return [
+
+  ];
+};
+
+
+
+module.exports = Tewaka;
+
+},{"../iban":33,"../method":36,"../transfer":49}],
+  "bignumber.js":[function(require,module,exports){
 'use strict';
 
 module.exports = BigNumber; // jshint ignore:line

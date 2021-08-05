@@ -94,29 +94,14 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 	nonceLock := new(AddrLocker)
 	return []rpc.API{
 		{
-			Namespace: "czz",
+			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicClasszzAPI(apiBackend),
 			Public:    true,
 		}, {
 			Namespace: "eth",
 			Version:   "1.0",
-			Service:   NewPublicClasszzAPI(apiBackend),
-			Public:    true,
-		}, {
-			Namespace: "czz",
-			Version:   "1.0",
 			Service:   NewPublicBlockChainAPI(apiBackend),
-			Public:    true,
-		}, {
-			Namespace: "eth",
-			Version:   "1.0",
-			Service:   NewPublicBlockChainAPI(apiBackend),
-			Public:    true,
-		}, {
-			Namespace: "czz",
-			Version:   "1.0",
-			Service:   NewPublicTransactionPoolAPI(apiBackend, nonceLock),
 			Public:    true,
 		}, {
 			Namespace: "eth",
@@ -138,14 +123,14 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Version:   "1.0",
 			Service:   NewPrivateDebugAPI(apiBackend),
 		}, {
-			Namespace: "czz",
+			Namespace: "eth",
 			Version:   "1.0",
 			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
 			Public:    true,
 		}, {
-			Namespace: "eth",
+			Namespace: "tewaka",
 			Version:   "1.0",
-			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
+			Service:   NewPublicTeWaKaAPI(apiBackend),
 			Public:    true,
 		}, {
 			Namespace: "personal",

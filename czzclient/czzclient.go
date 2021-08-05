@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/classzz/go-classzz-v2/core/vm"
 	"math/big"
 
 	"github.com/classzz/go-classzz-v2"
@@ -548,34 +547,6 @@ func toCallArg(msg classzz.CallMsg) interface{} {
 	return arg
 }
 
-// LockBalanceAt returns the wei balance of the given account.
-// The block number can be nil, in which case the balance is taken from the latest known block.
-func (ec *Client) LockBalanceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (*big.Int, error) {
-	var result hexutil.Big
-	err := ec.c.CallContext(ctx, &result, "czz_getLockBalance", account, toBlockNumArg(blockNumber))
-	return (*big.Int)(&result), err
-}
-
-//czz_protocolVersion
-func (ec *Client) GetProtocolVersion(ctx context.Context) (string, error) {
-	var result string
-	err := ec.c.CallContext(ctx, &result, "czz_protocolVersion", nil)
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//czz_coinbase
-func (ec *Client) Coinbase(ctx context.Context) (string, error) {
-	var result string
-	err := ec.c.CallContext(ctx, &result, "czz_coinbase", nil)
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
 //czz_pubkey
 func (ec *Client) Pubkey(ctx context.Context) (string, error) {
 	var result string
@@ -586,68 +557,20 @@ func (ec *Client) Pubkey(ctx context.Context) (string, error) {
 	return result, nil
 }
 
-//czz_mining
-func (ec *Client) IsMining(ctx context.Context) (bool, error) {
-	var result bool
-	err := ec.c.CallContext(ctx, &result, "czz_mining", nil)
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//personal_listAccounts
-func (ec *Client) ListAccounts(ctx context.Context) ([]common.Address, error) {
-	var result []common.Address
-	err := ec.c.CallContext(ctx, &result, "personal_listAccounts", nil)
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//tewaka_getAllStakingAccount
-func (ec *Client) GetAllStakingAccount(ctx context.Context, number *big.Int) (json.RawMessage, error) {
-	var result json.RawMessage
-	err := ec.c.CallContext(ctx, &result, "tewaka_getAllStakingAccount", toBlockNumArg(number))
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//tewaka_getStakingAsset
-func (ec *Client) GetStakingAsset(ctx context.Context, account common.Address, number *big.Int) (vm.TeWakaImpl, error) {
-	var result vm.TeWakaImpl
-	err := ec.c.CallContext(ctx, &result, "tewaka_getStakingAsset", account, toBlockNumArg(number))
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//tewaka_getStakingAccount
-func (ec *Client) GetStakingAccount(ctx context.Context, account common.Address, number *big.Int) (map[string]interface{}, error) {
+//tewaka_getPledgeInfo
+func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, number *big.Int) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	err := ec.c.CallContext(ctx, &result, "tewaka_getStakingAccount", account, toBlockNumArg(number))
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-func (ec *Client) GetImpawnSummay(ctx context.Context, number *big.Int) (map[string]interface{}, error) {
-	var result map[string]interface{}
-	err := ec.c.CallContext(ctx, &result, "tewaka_getImpawnSummay", toBlockNumArg(number))
+	err := ec.c.CallContext(ctx, &result, "tewaka_getPledgeInfo", account, toBlockNumArg(number))
 	if err != nil {
 		return result, err
 	}
 	return result, nil
 }
 
-//czz_getChainRewardContent
-func (ec *Client) GetChainRewardContent(ctx context.Context, account common.Address, number *big.Int) (map[string]interface{}, error) {
+//tewaka_getConvertItem
+func (ec *Client) GetConvertItem(ctx context.Context, number *big.Int) (map[string]interface{}, error) {
 	var result map[string]interface{}
-	err := ec.c.CallContext(ctx, &result, "czz_getChainRewardContent", toBlockNumArg(number), account)
+	err := ec.c.CallContext(ctx, &result, "tewaka_getStakingAccount", toBlockNumArg(number))
 	if err != nil {
 		return result, err
 	}
