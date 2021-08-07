@@ -336,7 +336,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(args.AssetType, args.ConvertType, item.TxHash, item.ToToken, item.PubKey, item.Committee, item.Amount, item.FeeAmount)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -429,7 +429,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["confirm"]
-	logData, err := event.Inputs.Pack(item.AssetType, item.ConvertType, item.TxHash, item.PubKey, item.ToToken, item.Amount, item.FeeAmount)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -457,7 +457,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	args := struct {
 		ConvertType *big.Int
 		Amount      *big.Int
-		ToToken     string
+		Path        []common.Address
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["casting"]
@@ -480,9 +480,13 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	item := &types.ConvertItem{
 		ConvertType: ConvertType,
-		ToToken:     args.ToToken,
+		Path:        args.Path,
 		Amount:      args.Amount,
 	}
+
+	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
+	item.ID = big.NewInt(rand.New(rand.NewSource(time.Now().Unix())).Int63())
+	item.Committee = tewaka.GetCommittee()
 
 	t2 := time.Now()
 	tewaka.Convert(item)
@@ -502,7 +506,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["casting"]
-	logData, err := event.Inputs.Pack(item.ConvertType, item.Amount, item.PubKey, item.ToToken)
+	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -564,7 +568,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 
 	amount := txLog.Data[:32]
 	ntype := txLog.Data[32:64]
-	toToken := txLog.Data[64:]
+	//toToken := txLog.Data[64:]
 
 	TxAmount := big.NewInt(0).SetBytes(amount)
 	amountPool := evm.StateDB.GetBalance(CoinPools[AssetType])
@@ -632,7 +636,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 		TxHash:      TxHash,
 		PubKey:      pk,
 		Amount:      TxAmount,
-		ToToken:     string(toToken),
+		//Path:     	 string(toToken),
 	}
 
 	return item, nil
@@ -840,6 +844,9 @@ const TeWakaABI = `
     "inputs": [
        {
         "type": "uint256",
+        "name": "ID"
+      },{
+        "type": "uint256",
         "name": "AssetType"
       },{
         "type": "uint256",
@@ -848,8 +855,8 @@ const TeWakaABI = `
         "type": "string",
         "name": "TxHash"
       },{
-        "type": "string",
-        "name": "ToToken"
+        "type": "address[]",
+        "name": "Path"
       },{
         "type": "bytes",
         "name": "PubKey"
@@ -862,6 +869,9 @@ const TeWakaABI = `
       },{
         "type": "uint256",
         "name": "FeeAmount"
+      },{
+        "type": "bytes",
+        "name": "Extra"
       }
     ],
     "anonymous": false,
@@ -889,7 +899,10 @@ const TeWakaABI = `
 {
     "name": "confirm",
     "inputs": [
-      {
+     {
+        "type": "uint256",
+        "name": "ID"
+      },{
         "type": "uint256",
         "name": "AssetType"
       },{
@@ -899,17 +912,23 @@ const TeWakaABI = `
         "type": "string",
         "name": "TxHash"
       },{
-        "type": "string",
-        "name": "ToToken"
+        "type": "address[]",
+        "name": "Path"
       },{
         "type": "bytes",
         "name": "PubKey"
+      },{
+        "type": "address",
+        "name": "Committee"
       },{
         "type": "uint256",
         "name": "Amount"
       },{
         "type": "uint256",
         "name": "FeeAmount"
+      },{
+        "type": "bytes",
+        "name": "Extra"
       }
     ],
     "anonymous": false,
@@ -939,16 +958,31 @@ const TeWakaABI = `
     "inputs": [
   {
         "type": "uint256",
-        "name": "ConvertType"
+        "name": "ID"
       },{
         "type": "uint256",
-        "name": "Amount"
+        "name": "ConvertType"
+      },{
+        "type": "string",
+        "name": "TxHash"
+      },{
+        "type": "address[]",
+        "name": "Path"
       },{
         "type": "bytes",
         "name": "PubKey"
       },{
-        "type": "string",
-        "name": "ToToken"
+        "type": "address",
+        "name": "Committee"
+      },{
+        "type": "uint256",
+        "name": "Amount"
+      },{
+        "type": "uint256",
+        "name": "FeeAmount"
+      },{
+        "type": "bytes",
+        "name": "Extra"
       }
     ],
     "anonymous": false,
@@ -965,8 +999,8 @@ const TeWakaABI = `
         "type": "uint256",
         "name": "Amount"
       },{
-        "type": "string",
-        "name": "ToToken"
+        "type": "address[]",
+        "name": "Path"
       }
     ],
     "constant": false,

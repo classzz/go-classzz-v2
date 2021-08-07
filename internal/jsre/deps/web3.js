@@ -13662,8 +13662,6 @@ var properties = function () {
   ];
 };
 
-
-
 module.exports = Tewaka;
 
 },{"../iban":33,"../method":36,"../transfer":49}],
@@ -13671,7 +13669,6 @@ module.exports = Tewaka;
 'use strict';
 
 module.exports = BigNumber; // jshint ignore:line
-
 
 },{}],"web3":[function(require,module,exports){
 var Web3 = require('./lib/web3');

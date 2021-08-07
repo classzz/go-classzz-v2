@@ -20,6 +20,7 @@ type extPledge struct {
 	Address         common.Address   `json:"address"`
 	PubKey          []byte           `json:"pub_key"`
 	ToAddress       common.Address   `json:"toAddress"`
+	Committee       bool             `json:"committee"`
 	StakingAmount   *big.Int         `json:"staking_amount"`
 	CoinBaseAddress []common.Address `json:"coinbase_address"`
 }
@@ -29,7 +30,7 @@ func (pi *Pledge) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&epi); err != nil {
 		return err
 	}
-	pi.Address, pi.PubKey, pi.ToAddress, pi.StakingAmount, pi.CoinBaseAddress = epi.Address, epi.PubKey, epi.ToAddress, epi.StakingAmount, epi.CoinBaseAddress
+	pi.Address, pi.PubKey, pi.ToAddress, pi.Committee, pi.StakingAmount, pi.CoinBaseAddress = epi.Address, epi.PubKey, epi.ToAddress, epi.Committee, epi.StakingAmount, epi.CoinBaseAddress
 	return nil
 }
 
@@ -38,6 +39,7 @@ func (pi *Pledge) EncodeRLP(w io.Writer) error {
 		Address:         pi.Address,
 		PubKey:          pi.PubKey,
 		ToAddress:       pi.ToAddress,
+		Committee:       pi.Committee,
 		StakingAmount:   pi.StakingAmount,
 		CoinBaseAddress: pi.CoinBaseAddress,
 	})
@@ -58,26 +60,29 @@ func (pi *Pledge) Clone() *Pledge {
 }
 
 type ConvertItem struct {
-	ID          *big.Int       `json:"id"`
-	AssetType   uint8          `json:"asset_type"`
-	ConvertType uint8          `json:"convert_type"`
-	TxHash      string         `json:"tx_hash"`
-	ToToken     string         `json:"to_token"`
-	PubKey      []byte         `json:"pub_key"`
-	Amount      *big.Int       `json:"amount"` // czz asset amount
-	FeeAmount   *big.Int       `json:"fee_amount"`
-	Committee   common.Address `json:"committee"`
+	ID          *big.Int         `json:"id"`
+	AssetType   uint8            `json:"asset_type"`
+	ConvertType uint8            `json:"convert_type"`
+	TxHash      string           `json:"tx_hash"`
+	PubKey      []byte           `json:"pub_key"`
+	Amount      *big.Int         `json:"amount"` // czz asset amount
+	FeeAmount   *big.Int         `json:"fee_amount"`
+	Committee   common.Address   `json:"committee"`
+	Path        []common.Address `json:"path"`
+	Extra       []byte           `json:"extra"`
 }
 
 type extConvertItem struct {
-	ID          *big.Int `json:"id"`
-	AssetType   uint8    `json:"asset_type"`
-	ConvertType uint8    `json:"convert_type"`
-	TxHash      string   `json:"tx_hash"`
-	ToToken     string   `json:"to_token"`
-	PubKey      []byte   `json:"pub_key"`
-	Amount      *big.Int `json:"amount"` // czz asset amount
-	FeeAmount   *big.Int `json:"fee_amount"`
+	ID          *big.Int         `json:"id"`
+	AssetType   uint8            `json:"asset_type"`
+	ConvertType uint8            `json:"convert_type"`
+	TxHash      string           `json:"tx_hash"`
+	PubKey      []byte           `json:"pub_key"`
+	Amount      *big.Int         `json:"amount"` // czz asset amount
+	FeeAmount   *big.Int         `json:"fee_amount"`
+	Committee   common.Address   `json:"committee"`
+	Path        []common.Address `json:"path"`
+	Extra       []byte           `json:"extra"`
 }
 
 func (ci *ConvertItem) DecodeRLP(s *rlp.Stream) error {
@@ -85,29 +90,40 @@ func (ci *ConvertItem) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&eci); err != nil {
 		return err
 	}
-	ci.ID, ci.TxHash, ci.ToToken, ci.PubKey, ci.Amount, ci.FeeAmount = eci.ID, eci.TxHash, eci.ToToken, eci.PubKey, eci.Amount, eci.FeeAmount
+	ci.ID, ci.AssetType, ci.ConvertType, ci.TxHash, ci.PubKey, ci.Amount, ci.FeeAmount, ci.Committee, ci.Path, ci.Extra = eci.ID, eci.AssetType, eci.ConvertType, eci.TxHash, eci.PubKey, eci.Amount, eci.FeeAmount, eci.Committee, eci.Path, eci.Extra
 	return nil
 }
 
 func (ci *ConvertItem) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, extConvertItem{
-		ID:        ci.ID,
-		TxHash:    ci.TxHash,
-		ToToken:   ci.ToToken,
-		PubKey:    ci.PubKey,
-		Amount:    ci.Amount,
-		FeeAmount: ci.FeeAmount,
+		ID:          ci.ID,
+		AssetType:   ci.AssetType,
+		ConvertType: ci.ConvertType,
+		TxHash:      ci.TxHash,
+		PubKey:      ci.PubKey,
+		Amount:      ci.Amount,
+		FeeAmount:   ci.FeeAmount,
+		Committee:   ci.Committee,
+		Path:        ci.Path,
+		Extra:       ci.Extra,
 	})
 }
 
 func (ci *ConvertItem) Clone() *ConvertItem {
 	ss := &ConvertItem{
-		ID:        new(big.Int).Set(ci.ID),
-		TxHash:    ci.TxHash,
-		ToToken:   ci.ToToken,
-		PubKey:    CopyVotePk(ci.PubKey),
-		Amount:    new(big.Int).Set(ci.Amount),
-		FeeAmount: new(big.Int).Set(ci.FeeAmount),
+		ID:          new(big.Int).Set(ci.ID),
+		AssetType:   ci.AssetType,
+		ConvertType: ci.ConvertType,
+		TxHash:      ci.TxHash,
+		PubKey:      CopyVotePk(ci.PubKey),
+		Amount:      new(big.Int).Set(ci.Amount),
+		FeeAmount:   new(big.Int).Set(ci.FeeAmount),
+		Committee:   common.HexToAddress(ci.Committee.String()),
+		Extra:       CopyVotePk(ci.Extra),
+	}
+
+	for _, v := range ss.Path {
+		ss.Path = append(ss.Path, v)
 	}
 	return ss
 }
