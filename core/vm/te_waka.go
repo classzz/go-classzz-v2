@@ -44,6 +44,7 @@ const (
 
 var (
 	baseUnit  = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	Int10     = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
 	fbaseUnit = new(big.Float).SetFloat64(float64(baseUnit.Int64()))
 	mixImpawn = new(big.Int).Mul(big.NewInt(1000), baseUnit)
 	Base      = new(big.Int).SetUint64(10000)
@@ -57,12 +58,12 @@ var (
 		ExpandedTxConvert_OCzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104},
 	}
 
-	ethPoolAddr  = "0x9ac88c5136240312f8817dbb99497ace62b03f12|0xB2451147c6154659c350EaC39ED37599bff4d32e|0xF0f50ce5054289a178fb45Ab2E373899580d12bf"
-	hecoPoolAddr = "0x711d839cd1e6e81b971f5b6bbb4a6bd7c4b60ac6|0xdc3013FcF6A748c6b468de21b8A1680dbcb979ca|0x93E00a89F5CBF9c66a50aF7206c9c6f54601EC15|0x30d0e3F30D527373a27A2177fAcb4bdCc046DC1C"
-	bscPoolAddr  = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|0x711D839CD1E6E81B971F5b6bBB4a6BD7C4B60Ac6|0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|0xa5D17B93f4156afd96be9f5B40888ffb47fA4bc1"
-	okexPoolAddr = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|0x711D839CD1E6E81B971F5b6bBB4a6BD7C4B60Ac6|0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|0xa5D17B93f4156afd96be9f5B40888ffb47fA4bc1"
+	ethPoolAddr  = "0xEd8d27a202c9aBF50c928E7a8d5f7D97D3292cAA"
+	hecoPoolAddr = ""
+	bscPoolAddr  = ""
+	okexPoolAddr = ""
 
-	burnTopics = "0x86f32d6c7a935bd338ee00610630fcfb6f043a6ad755db62064ce2ad92c45caa"
+	burnTopics = "0x0c0f71b4c3c0f4c42e7ab9336ecc8325bd6fb58e3e4f5d5f6818d9ed3957dfb2"
 	mintTopics = "0x8fb5c7bffbb272c541556c455c74269997b816df24f56dd255c2391d92d4f1e9"
 )
 
@@ -77,11 +78,13 @@ var TeWaKaGas = map[string]uint64{
 
 // Staking contract ABI
 var AbiTeWaKa abi.ABI
+var AbiCzzRouter abi.ABI
 
 type StakeContract struct{}
 
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
+	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
 }
 
 // RunStaking execute staking contract
@@ -566,18 +569,26 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) txLog is nil ", netName)
 	}
 
-	amount := txLog.Data[:32]
-	ntype := txLog.Data[32:64]
-	//toToken := txLog.Data[64:]
+	logs := struct {
+		Address common.Address
+		Amount  *big.Int
+		Ntype   *big.Int
+		ToPath  []common.Address
+		Extra   []byte
+	}{}
 
-	TxAmount := big.NewInt(0).SetBytes(amount)
+	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
+	}
+
 	amountPool := evm.StateDB.GetBalance(CoinPools[AssetType])
+	TxAmount := new(big.Int).Mul(logs.Amount, Int10)
 	if TxAmount.Cmp(amountPool) > 0 {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) tx amount [%d] > pool [%d]", netName, TxAmount.Uint64(), amountPool)
 	}
 
-	if big.NewInt(0).SetBytes(ntype).Uint64() != uint64(ConvertType) {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  ntype [%d] not [%d]", netName, big.NewInt(0).SetBytes(ntype), ConvertType)
+	if logs.Ntype.Uint64() != uint64(ConvertType) {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  ntype [%d] not [%d]", netName, logs.Ntype, ConvertType)
 	}
 
 	var extTx *types.Transaction
@@ -635,8 +646,9 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 		ConvertType: ConvertType,
 		TxHash:      TxHash,
 		PubKey:      pk,
-		Amount:      TxAmount,
-		//Path:     	 string(toToken),
+		Amount:      logs.Amount,
+		Path:        logs.ToPath,
+		Extra:       logs.Extra,
 	}
 
 	return item, nil
@@ -1007,5 +1019,78 @@ const TeWakaABI = `
     "payable": false,
     "type": "function"
   }
+]
+`
+
+const CzzRouterABI = `
+[
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "ntype",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address[]",
+				"name": "toPath",
+				"type": "address[]"
+			},
+			{
+				"indexed": false,
+				"internalType": "bytes",
+				"name": "Extra",
+				"type": "bytes"
+			}
+		],
+		"name": "BurnToken",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": true,
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "mid",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			}
+		],
+		"name": "MintToken",
+		"type": "event"
+	}
 ]
 `
