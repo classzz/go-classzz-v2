@@ -269,7 +269,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	t0 := time.Now()
 	args := struct {
 		AssetType *big.Int
-		TxHash    common.Hash
+		TxHash    string
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["convert"]
@@ -279,8 +279,13 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, ErrStakingInvalidInput
 	}
 
+	TxHash := common.HexToHash(args.TxHash)
 	from := contract.caller.Address()
 	t1 := time.Now()
+
+	if exit := evm.StateDB.HasRecord(TxHash); exit {
+		return nil, ErrTxhashAlreadyInput
+	}
 
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
@@ -299,22 +304,22 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	switch AssetType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, AssetType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, AssetType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
 	}
@@ -338,7 +343,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.ID, args.AssetType, item.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err

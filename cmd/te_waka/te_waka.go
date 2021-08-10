@@ -202,16 +202,6 @@ func printError(error ...interface{}) {
 	log.Fatal(error)
 }
 
-//func czzToWei(ctx *cli.Context, zero bool) *big.Int {
-//	czzValue = ctx.GlobalUint64(CzzValueFlag.Name)
-//	if !zero && czzValue <= 0 {
-//		printError("Value must bigger than 0")
-//	}
-//	baseUnit := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-//	value := new(big.Int).Mul(big.NewInt(int64(czzValue)), baseUnit)
-//	return value
-//}
-
 func czzToWei(amount uint64) *big.Int {
 	baseUnit := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	value := new(big.Int).Mul(big.NewInt(200), baseUnit)
@@ -273,9 +263,7 @@ func queryTx(conn *czzclient.Client, txHash common.Hash, contract bool, pending 
 		}
 
 		fmt.Println("Transaction Success", " block Number", receipt.BlockNumber.Uint64(), " block txs", len(block.Transactions()), "blockhash", block.Hash().Hex())
-		if contract && common.IsHexAddress(from.Hex()) {
-			queryStakingInfo(conn, false, delegate)
-		}
+
 	} else if receipt.Status == types.ReceiptStatusFailed {
 		fmt.Println("Transaction Failed ", " Block Number", receipt.BlockNumber.Uint64())
 	}
@@ -388,63 +376,3 @@ func loadSigningKey(keyfile string) common.Address {
 //		}
 //	}
 //}
-
-func queryStakingInfo(conn *czzclient.Client, query bool, delegate bool) {
-	header, err := conn.HeaderByNumber(context.Background(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var input []byte
-	if delegate {
-		input = packInput("getDelegate", from, holder)
-	} else {
-		input = packInput("getDeposit", from)
-	}
-	msg := classzz.CallMsg{From: from, To: &vm.TeWaKaAddress, Data: input}
-	output, err := conn.CallContract(context.Background(), msg, header.Number)
-	if err != nil {
-		printError("method CallContract error", err)
-	}
-	if len(output) != 0 {
-
-		inter, err := abiStaking.Unpack("getDeposit", output)
-		if err != nil {
-			printError("abi error", err)
-		}
-		args, ok := inter[0].(struct {
-			Staked   *big.Int
-			Locked   *big.Int
-			Unlocked *big.Int
-		})
-		if !ok {
-			fmt.Println("failed")
-			return
-		}
-
-		if err != nil {
-			printError("abi error", err)
-		}
-		fmt.Println("Staked ", args.Staked.String(), "wei =", common.ToCzz(args.Staked), "true Locked ",
-			args.Locked.String(), " wei =", common.ToCzz(args.Locked), "true",
-			"Unlocked ", args.Unlocked.String(), " wei =", common.ToCzz(args.Unlocked), "true")
-		if query && args.Locked.Sign() > 0 {
-			//lockAssets, err := conn.GetLockedAsset(context.Background(), from, header.Number)
-			//if err != nil {
-			//	printError("GetLockedAsset error", err)
-			//}
-			//for k, v := range lockAssets {
-			//	for m, n := range v.LockValue {
-			//		if !n.Locked {
-			//			fmt.Println("Your can instant withdraw", " count value ", n.Amount, " true")
-			//		} else {
-			//			if n.EpochID > 0 || n.Amount != "0" {
-			//				fmt.Println("Your can withdraw after height", n.Height.Uint64(), " count value ", n.Amount, " true  index", k+m, " lock ", n.Locked)
-			//			}
-			//		}
-			//	}
-			//}
-		}
-	} else {
-		fmt.Println("Contract query failed result len == 0")
-	}
-}
