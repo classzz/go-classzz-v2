@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/classzz/go-classzz-v2/core/vm"
 	"math/big"
 	"runtime"
 	"time"
@@ -419,6 +420,7 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 	// Accumulate any block and uncle rewards and commit the final state root
 	accumulateRewards(chain.Config(), state, header)
 	consensus.OnceInitImpawnState(chain.Config(), state)
+	vm.ShiftItems(state,header.Number.Uint64())
 	header.Root = state.IntermediateRoot(true)
 }
 

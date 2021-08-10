@@ -16,6 +16,7 @@ import (
 )
 
 var IC *PledgeCache
+var DumpHeight uint64 = 50000
 
 func init() {
 	IC = newPledgeCache()
@@ -37,12 +38,14 @@ func newPledgeCache() *PledgeCache {
 type TeWakaImpl struct {
 	PledgeInfos  []*types.Pledge
 	ConvertItems []*types.ConvertItem
+	UsedItems 	 []*types.UsedItem
 }
 
 func NewTeWakaImpl() *TeWakaImpl {
 	return &TeWakaImpl{
 		PledgeInfos:  make([]*types.Pledge, 0, 0),
 		ConvertItems: make([]*types.ConvertItem, 0, 0),
+		UsedItems: 	  make([]*types.UsedItem,0,0),
 	}
 }
 
@@ -65,12 +68,19 @@ func CloneTeWakaImpl(ori *TeWakaImpl) *TeWakaImpl {
 		items1 = append(items1, vv)
 	}
 	tmp.ConvertItems = items1
+
+	items2 := make([]*types.UsedItem, 0, 0)
+	for _, val := range ori.UsedItems {
+		items2 = append(items2, val)
+	}
+	tmp.UsedItems = items2
 	return tmp
 }
 
 type extTeWakaImpl struct {
 	PledgeInfos  []*types.Pledge
 	ConvertItems []*types.ConvertItem
+	UsedItems 	 []*types.UsedItem
 }
 
 func (twi *TeWakaImpl) DecodeRLP(s *rlp.Stream) error {
@@ -191,4 +201,55 @@ func (twi *TeWakaImpl) GetStakingByUser(address common.Address) *big.Int {
 
 func (twi *TeWakaImpl) GetCommittee() common.Address {
 	return twi.PledgeInfos[rand.Intn(len(twi.PledgeInfos))].Address
+}
+
+func (twi *TeWakaImpl) KeepItemsByEpoch(state StateDB) error {
+	if err := twi.dumpUsedItems(state); err != nil {
+		return err
+	} else {
+		items := make([]*types.UsedItem,0,0)
+		twi.UsedItems = items
+	}
+	return nil
+}
+func (twi *TeWakaImpl) HasItem(item *types.UsedItem,state StateDB) bool{
+	if twi.findItem(item) {
+		return true
+	} else {
+		return twi.isItemFromDB(item,state)
+	}
+}
+func (twi *TeWakaImpl) SetItem(item *types.UsedItem) {
+	if !twi.findItem(item) {
+		twi.UsedItems = append(twi.UsedItems,item)
+	}
+}
+
+func (twi *TeWakaImpl) dumpUsedItems(state StateDB) error {
+	for _,v := range twi.UsedItems {
+		state.WriteRecord(uint64(v.Atype),v.TxHash)
+	}
+	return nil
+}
+func (twi *TeWakaImpl) findItem(item *types.UsedItem) bool {
+	for _,val := range twi.UsedItems {
+		if val.Atype == item.Atype && val.TxHash == item.TxHash {
+			return true
+		}
+	}
+	return false
+}
+func (twi *TeWakaImpl) isItemFromDB(item *types.UsedItem,state StateDB) bool {
+	return state.HasRecord(uint64(item.Atype),item.TxHash)
+}
+
+func ShiftItems(state StateDB,height uint64) error {
+	if height % DumpHeight == 0 {
+		twi := NewTeWakaImpl()
+		twi.Load(state, TeWaKaAddress)
+		defer twi.Save(state, TeWaKaAddress)
+
+		return twi.KeepItemsByEpoch(state)
+	}
+	return nil
 }

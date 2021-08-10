@@ -1099,12 +1099,12 @@ func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addre
 	return s.accessList.Contains(addr, slot)
 }
 
-func (s *StateDB) HasRecord(hash common.Hash) bool {
-	return rawdb.HasRecord(s.db.TrieDB().DiskDB(), hash)
+func (s *StateDB) HasRecord(atype uint64,hash common.Hash) bool {
+	return rawdb.HasRecord(s.db.TrieDB().DiskDB(),atype, hash)
 }
-func (s *StateDB) WriteRecord(hash common.Hash) {
-	rawdb.WriteRecord(s.db.TrieDB().DiskDB(), hash)
+func (s *StateDB) WriteRecord(atype uint64,hash common.Hash) {
+	rawdb.WriteRecord(s.db.TrieDB().DiskDB(),atype, hash)
 }
-func (s *StateDB) DeleteRecord(hash common.Hash) {
-	rawdb.DeleteRecord(s.db.TrieDB().DiskDB(), hash)
+func (s *StateDB) DeleteRecord(atype uint64,hash common.Hash) {
+	rawdb.DeleteRecord(s.db.TrieDB().DiskDB(),atype, hash)
 }

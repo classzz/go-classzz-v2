@@ -296,6 +296,11 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	var item *types.ConvertItem
 	AssetType := uint8(args.AssetType.Uint64())
+
+	if exit := tewaka.HasItem(&types.UsedItem{uint8(AssetType),args.TxHash},evm.StateDB);exit {
+		return nil, ErrTxhashAlreadyInput
+	}
+
 	switch AssetType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
@@ -366,7 +371,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	args := struct {
 		AssetType   *big.Int
 		ConvertType *big.Int
-		TxHash      string
+		TxHash      common.Hash
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["confirm"]
@@ -379,20 +384,21 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
-	if exit := evm.StateDB.HasRecord(common.HexToHash(args.TxHash)); exit {
-		return nil, ErrTxhashAlreadyInput
-	}
-
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
 	if err != nil {
 		log.Error("Staking load error", "error", err)
 		return nil, err
 	}
-
 	var item *types.ConvertItem
 	AssetType := uint8(args.AssetType.Uint64())
 	ConvertType := uint8(args.ConvertType.Uint64())
+
+	if exit := tewaka.HasItem(&types.UsedItem{uint8(AssetType),args.TxHash},evm.StateDB);exit {
+		return nil, ErrTxhashAlreadyInput
+	}
+
+
 
 	switch AssetType {
 	case ExpandedTxConvert_ECzz:
@@ -427,7 +433,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, err
 	}
 
-	evm.StateDB.WriteRecord(common.HexToHash(args.TxHash))
+	//evm.StateDB.WriteRecord(common.HexToHash(args.TxHash))
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["confirm"]
@@ -649,7 +655,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	return item, nil
 }
 
-func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, AssetType uint8, ConvertType uint8, TxHash string) (*types.ConvertItem, error) {
+func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, AssetType uint8, ConvertType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
 
 	if AssetType == ConvertType {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, ConvertType)

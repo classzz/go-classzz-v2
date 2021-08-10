@@ -142,8 +142,9 @@ func encodeBlockNumber(number uint64) []byte {
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
 }
-func recordKeyPrefix(hash common.Hash) []byte {
-	return append(recordPrefix, hash.Bytes()...)
+// recordKey = recordPrefix + num (uint64 big endian) + hash
+func recordKeyPrefix(num uint64,hash common.Hash) []byte {
+	return append(append(recordPrefix, encodeBlockNumber(num)...), hash.Bytes()...)
 }
 
 // headerKeyPrefix = headerPrefix + num (uint64 big endian)

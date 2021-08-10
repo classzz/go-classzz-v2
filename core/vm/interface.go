@@ -50,9 +50,9 @@ type StateDB interface {
 	GetTeWakaState(common.Address, common.Hash) []byte
 	SetTeWakaState(common.Address, common.Hash, []byte)
 
-	HasRecord(hash common.Hash) bool
-	WriteRecord(hash common.Hash)
-	DeleteRecord(hash common.Hash)
+	HasRecord(atype uint64,hash common.Hash) bool
+	WriteRecord(atype uint64,hash common.Hash)
+	DeleteRecord(atype uint64,hash common.Hash)
 
 	Suicide(common.Address) bool
 	HasSuicided(common.Address) bool
