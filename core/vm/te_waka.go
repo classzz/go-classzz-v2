@@ -283,10 +283,6 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
-	if exit := evm.StateDB.HasRecord(TxHash); exit {
-		return nil, ErrTxhashAlreadyInput
-	}
-
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
 	if err != nil {
@@ -297,7 +293,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	var item *types.ConvertItem
 	AssetType := uint8(args.AssetType.Uint64())
 
-	if exit := tewaka.HasItem(&types.UsedItem{uint8(AssetType),args.TxHash},evm.StateDB);exit {
+	if exit := tewaka.HasItem(&types.UsedItem{AssetType, TxHash}, evm.StateDB); exit {
 		return nil, ErrTxhashAlreadyInput
 	}
 
@@ -333,6 +329,8 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	evm.StateDB.SubBalance(CoinPools[item.AssetType], item.Amount)
 	evm.StateDB.AddBalance(CoinPools[item.ConvertType], new(big.Int).Sub(item.Amount, item.FeeAmount))
+
+	tewaka.SetItem(&types.UsedItem{AssetType, TxHash})
 
 	t3 := time.Now()
 	err = tewaka.Save(evm.StateDB, TeWaKaAddress)
@@ -394,11 +392,9 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	AssetType := uint8(args.AssetType.Uint64())
 	ConvertType := uint8(args.ConvertType.Uint64())
 
-	if exit := tewaka.HasItem(&types.UsedItem{uint8(AssetType),args.TxHash},evm.StateDB);exit {
+	if exit := tewaka.HasItem(&types.UsedItem{uint8(AssetType), args.TxHash}, evm.StateDB); exit {
 		return nil, ErrTxhashAlreadyInput
 	}
-
-
 
 	switch AssetType {
 	case ExpandedTxConvert_ECzz:

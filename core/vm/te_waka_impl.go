@@ -38,14 +38,14 @@ func newPledgeCache() *PledgeCache {
 type TeWakaImpl struct {
 	PledgeInfos  []*types.Pledge
 	ConvertItems []*types.ConvertItem
-	UsedItems 	 []*types.UsedItem
+	UsedItems    []*types.UsedItem
 }
 
 func NewTeWakaImpl() *TeWakaImpl {
 	return &TeWakaImpl{
 		PledgeInfos:  make([]*types.Pledge, 0, 0),
 		ConvertItems: make([]*types.ConvertItem, 0, 0),
-		UsedItems: 	  make([]*types.UsedItem,0,0),
+		UsedItems:    make([]*types.UsedItem, 0, 0),
 	}
 }
 
@@ -80,7 +80,7 @@ func CloneTeWakaImpl(ori *TeWakaImpl) *TeWakaImpl {
 type extTeWakaImpl struct {
 	PledgeInfos  []*types.Pledge
 	ConvertItems []*types.ConvertItem
-	UsedItems 	 []*types.UsedItem
+	UsedItems    []*types.UsedItem
 }
 
 func (twi *TeWakaImpl) DecodeRLP(s *rlp.Stream) error {
@@ -88,7 +88,7 @@ func (twi *TeWakaImpl) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&etwi); err != nil {
 		return err
 	}
-	twi.PledgeInfos, twi.ConvertItems = etwi.PledgeInfos, etwi.ConvertItems
+	twi.PledgeInfos, twi.ConvertItems, twi.UsedItems = etwi.PledgeInfos, etwi.ConvertItems, etwi.UsedItems
 	return nil
 }
 
@@ -96,6 +96,7 @@ func (twi *TeWakaImpl) EncodeRLP(w io.Writer) error {
 	return rlp.Encode(w, extTeWakaImpl{
 		PledgeInfos:  twi.PledgeInfos,
 		ConvertItems: twi.ConvertItems,
+		UsedItems:    twi.UsedItems,
 	})
 }
 
@@ -144,7 +145,7 @@ func (i *TeWakaImpl) Load(state StateDB, preAddress common.Address) error {
 		}
 		// cache = false
 	}
-	i.PledgeInfos, i.ConvertItems = temp.PledgeInfos, temp.ConvertItems
+	i.PledgeInfos, i.ConvertItems, i.UsedItems = temp.PledgeInfos, temp.ConvertItems, temp.UsedItems
 	return nil
 }
 
@@ -207,44 +208,48 @@ func (twi *TeWakaImpl) KeepItemsByEpoch(state StateDB) error {
 	if err := twi.dumpUsedItems(state); err != nil {
 		return err
 	} else {
-		items := make([]*types.UsedItem,0,0)
+		items := make([]*types.UsedItem, 0, 0)
 		twi.UsedItems = items
 	}
 	return nil
 }
-func (twi *TeWakaImpl) HasItem(item *types.UsedItem,state StateDB) bool{
+
+func (twi *TeWakaImpl) HasItem(item *types.UsedItem, state StateDB) bool {
 	if twi.findItem(item) {
 		return true
 	} else {
-		return twi.isItemFromDB(item,state)
+		return twi.isItemFromDB(item, state)
 	}
 }
+
 func (twi *TeWakaImpl) SetItem(item *types.UsedItem) {
 	if !twi.findItem(item) {
-		twi.UsedItems = append(twi.UsedItems,item)
+		twi.UsedItems = append(twi.UsedItems, item)
 	}
 }
 
 func (twi *TeWakaImpl) dumpUsedItems(state StateDB) error {
-	for _,v := range twi.UsedItems {
-		state.WriteRecord(uint64(v.Atype),v.TxHash)
+	for _, v := range twi.UsedItems {
+		state.WriteRecord(uint64(v.Atype), v.TxHash)
 	}
 	return nil
 }
+
 func (twi *TeWakaImpl) findItem(item *types.UsedItem) bool {
-	for _,val := range twi.UsedItems {
+	for _, val := range twi.UsedItems {
 		if val.Atype == item.Atype && val.TxHash == item.TxHash {
 			return true
 		}
 	}
 	return false
 }
-func (twi *TeWakaImpl) isItemFromDB(item *types.UsedItem,state StateDB) bool {
-	return state.HasRecord(uint64(item.Atype),item.TxHash)
+
+func (twi *TeWakaImpl) isItemFromDB(item *types.UsedItem, state StateDB) bool {
+	return state.HasRecord(uint64(item.Atype), item.TxHash)
 }
 
-func ShiftItems(state StateDB,height uint64) error {
-	if height % DumpHeight == 0 {
+func ShiftItems(state StateDB, height uint64) error {
+	if height%DumpHeight == 0 {
 		twi := NewTeWakaImpl()
 		twi.Load(state, TeWaKaAddress)
 		defer twi.Save(state, TeWaKaAddress)
