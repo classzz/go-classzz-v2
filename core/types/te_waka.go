@@ -133,3 +133,8 @@ func CopyVotePk(pk []byte) []byte {
 	copy(cc, pk)
 	return cc
 }
+
+type UsedItem struct {
+	Atype 	uint8
+	TxHash  common.Hash
+}
