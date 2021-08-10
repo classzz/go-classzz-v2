@@ -268,9 +268,8 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
 	args := struct {
-		AssetType   *big.Int
-		ConvertType *big.Int
-		TxHash      string
+		AssetType *big.Int
+		TxHash    common.Hash
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["convert"]
@@ -283,7 +282,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
-	if exit := evm.StateDB.HasRecord(common.HexToHash(args.TxHash)); exit {
+	if exit := evm.StateDB.HasRecord(args.TxHash); exit {
 		return nil, ErrTxhashAlreadyInput
 	}
 
@@ -296,26 +295,25 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	var item *types.ConvertItem
 	AssetType := uint8(args.AssetType.Uint64())
-	ConvertType := uint8(args.ConvertType.Uint64())
 	switch AssetType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, AssetType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, AssetType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, args.TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, tewaka, AssetType, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, args.TxHash); err != nil {
 			return nil, err
 		}
 	}
@@ -339,7 +337,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.ID, args.AssetType, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, item.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -351,7 +349,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	logN(evm, contract, topics, logData)
 	context := []interface{}{
 		"number", evm.Context.BlockNumber.Uint64(), "address", from, "Amount", item.Amount,
-		"AssetType", args.AssetType, "ConvertType", args.ConvertType, "TxHash", args.TxHash,
+		"AssetType", args.AssetType, "ConvertType", item.ConvertType, "TxHash", args.TxHash,
 		"input", common.PrettyDuration(t1.Sub(t0)), "load", common.PrettyDuration(t2.Sub(t1)),
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
@@ -530,15 +528,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	return nil, nil
 }
 
-func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, tewaka *TeWakaImpl, AssetType uint8, ConvertType uint8, TxHash string) (*types.ConvertItem, error) {
-
-	if AssetType == ConvertType {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, ConvertType)
-	}
-
-	if _, ok := CoinPools[ConvertType]; !ok && ConvertType != 0 {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ConvertType is [%d] CoinPools not find", netName, ConvertType)
-	}
+func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, AssetType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
 
 	var receipt *types.Receipt
 	if err := client.Call(&receipt, "eth_getTransactionReceipt", TxHash); err != nil {
@@ -587,8 +577,12 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) tx amount [%d] > pool [%d]", netName, TxAmount.Uint64(), amountPool)
 	}
 
-	if logs.Ntype.Uint64() != uint64(ConvertType) {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  ntype [%d] not [%d]", netName, logs.Ntype, ConvertType)
+	if _, ok := CoinPools[uint8(logs.Ntype.Uint64())]; !ok && uint8(logs.Ntype.Uint64()) != 0 {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ConvertType is [%d] CoinPools not find", netName, logs.Ntype.Uint64())
+	}
+
+	if AssetType == uint8(logs.Ntype.Uint64()) {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, logs.Ntype.Uint64())
 	}
 
 	var extTx *types.Transaction
@@ -643,7 +637,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, t
 
 	item := &types.ConvertItem{
 		AssetType:   AssetType,
-		ConvertType: ConvertType,
+		ConvertType: uint8(logs.Ntype.Uint64()),
 		TxHash:      TxHash,
 		PubKey:      pk,
 		Amount:      logs.Amount,
@@ -896,9 +890,6 @@ const TeWakaABI = `
       {
         "type": "uint256",
         "name": "AssetType"
-      },{
-        "type": "uint256",
-        "name": "ConvertType"
       },{
         "type": "string",
         "name": "TxHash"

@@ -77,11 +77,6 @@ var (
 			Usage: "",
 			Value: 0,
 		},
-		cli.Uint64Flag{
-			Name:  "convert.converttype",
-			Usage: "",
-			Value: 0,
-		},
 		cli.StringFlag{
 			Name:  "convert.txhash",
 			Usage: "",
@@ -140,7 +135,6 @@ var (
 
 		ConvertFlags[0],
 		ConvertFlags[1],
-		ConvertFlags[2],
 
 		ConfirmFlags[0],
 		ConfirmFlags[1],

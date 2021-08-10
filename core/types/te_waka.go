@@ -63,7 +63,7 @@ type ConvertItem struct {
 	ID          *big.Int         `json:"id"`
 	AssetType   uint8            `json:"asset_type"`
 	ConvertType uint8            `json:"convert_type"`
-	TxHash      string           `json:"tx_hash"`
+	TxHash      common.Hash      `json:"tx_hash"`
 	PubKey      []byte           `json:"pub_key"`
 	Amount      *big.Int         `json:"amount"` // czz asset amount
 	FeeAmount   *big.Int         `json:"fee_amount"`
@@ -76,7 +76,7 @@ type extConvertItem struct {
 	ID          *big.Int         `json:"id"`
 	AssetType   uint8            `json:"asset_type"`
 	ConvertType uint8            `json:"convert_type"`
-	TxHash      string           `json:"tx_hash"`
+	TxHash      common.Hash      `json:"tx_hash"`
 	PubKey      []byte           `json:"pub_key"`
 	Amount      *big.Int         `json:"amount"` // czz asset amount
 	FeeAmount   *big.Int         `json:"fee_amount"`
@@ -122,7 +122,7 @@ func (ci *ConvertItem) Clone() *ConvertItem {
 		Extra:       CopyVotePk(ci.Extra),
 	}
 
-	for _, v := range ss.Path {
+	for _, v := range ci.Path {
 		ss.Path = append(ss.Path, v)
 	}
 	return ss

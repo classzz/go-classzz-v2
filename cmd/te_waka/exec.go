@@ -74,14 +74,12 @@ var ConvertCommand = cli.Command{
 func Convert(ctx *cli.Context) error {
 
 	loadPrivate(ctx)
-
 	conn, _ := dialConn(ctx)
 
 	AssetType := big.NewInt(ctx.GlobalInt64(ConvertFlags[0].GetName()))
-	ConvertType := big.NewInt(ctx.GlobalInt64(ConvertFlags[1].GetName()))
-	TxHash := ctx.GlobalString(ConvertFlags[2].GetName())
+	TxHash := ctx.GlobalString(ConvertFlags[1].GetName())
 
-	input := packInput("convert", AssetType, ConvertType, TxHash)
+	input := packInput("convert", AssetType, TxHash)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 
