@@ -954,9 +954,6 @@ const TeWakaABI = `
     "inputs": [
       {
         "type": "uint256",
-        "name": "AssetType"
-      },{
-        "type": "uint256",
         "name": "ConvertType"
       },{
         "type": "string",
