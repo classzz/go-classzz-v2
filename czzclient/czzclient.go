@@ -568,9 +568,9 @@ func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, num
 }
 
 //tewaka_getConvertItem
-func (ec *Client) GetConvertItem(ctx context.Context, number *big.Int) ([]*types.ConvertItem, error) {
+func (ec *Client) GetConvertItem(ctx context.Context) ([]*types.ConvertItem, error) {
 	var result []*types.ConvertItem
-	err := ec.c.CallContext(ctx, &result, "tewaka_getConvertItems", toBlockNumArg(number))
+	err := ec.c.CallContext(ctx, &result, "tewaka_getConvertItems")
 	if err != nil {
 		return result, err
 	}
