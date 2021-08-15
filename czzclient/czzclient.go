@@ -558,8 +558,8 @@ func (ec *Client) Pubkey(ctx context.Context) (string, error) {
 }
 
 //tewaka_getPledgeInfo
-func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, number *big.Int) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, number *big.Int) ([]*types.Pledge, error) {
+	var result []*types.Pledge
 	err := ec.c.CallContext(ctx, &result, "tewaka_getPledgeInfo", account, toBlockNumArg(number))
 	if err != nil {
 		return result, err
@@ -568,8 +568,8 @@ func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, num
 }
 
 //tewaka_getConvertItem
-func (ec *Client) GetConvertItem(ctx context.Context, number *big.Int) (map[string]interface{}, error) {
-	var result map[string]interface{}
+func (ec *Client) GetConvertItem(ctx context.Context, number *big.Int) ([]*types.ConvertItem, error) {
+	var result []*types.ConvertItem
 	err := ec.c.CallContext(ctx, &result, "tewaka_getStakingAccount", toBlockNumArg(number))
 	if err != nil {
 		return result, err
