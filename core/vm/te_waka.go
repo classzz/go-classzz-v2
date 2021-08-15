@@ -571,11 +571,12 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	logs := struct {
-		Address common.Address
-		Amount  *big.Int
-		Ntype   *big.Int
-		ToPath  []common.Address
-		Extra   []byte
+		Address    common.Address
+		Amount     *big.Int
+		Ntype      *big.Int
+		ToPath     []common.Address
+		RouterAddr common.Address
+		Extra      []byte
 	}{}
 
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
@@ -653,6 +654,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		PubKey:      pk,
 		Amount:      logs.Amount,
 		Path:        logs.ToPath,
+		RouterAddr:  logs.RouterAddr,
 		Extra:       logs.Extra,
 	}
 
@@ -1049,6 +1051,12 @@ const CzzRouterABI = `
 				"internalType": "address[]",
 				"name": "toPath",
 				"type": "address[]"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "toRouterAddr",
+				"type": "address"
 			},
 			{
 				"indexed": false,

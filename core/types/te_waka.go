@@ -69,6 +69,7 @@ type ConvertItem struct {
 	FeeAmount   *big.Int         `json:"fee_amount"`
 	Committee   common.Address   `json:"committee"`
 	Path        []common.Address `json:"path"`
+	RouterAddr  common.Address   `json:"router_addr"`
 	Extra       []byte           `json:"extra"`
 }
 
@@ -82,6 +83,7 @@ type extConvertItem struct {
 	FeeAmount   *big.Int         `json:"fee_amount"`
 	Committee   common.Address   `json:"committee"`
 	Path        []common.Address `json:"path"`
+	RouterAddr  common.Address   `json:"router_addr"`
 	Extra       []byte           `json:"extra"`
 }
 
@@ -90,7 +92,7 @@ func (ci *ConvertItem) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&eci); err != nil {
 		return err
 	}
-	ci.ID, ci.AssetType, ci.ConvertType, ci.TxHash, ci.PubKey, ci.Amount, ci.FeeAmount, ci.Committee, ci.Path, ci.Extra = eci.ID, eci.AssetType, eci.ConvertType, eci.TxHash, eci.PubKey, eci.Amount, eci.FeeAmount, eci.Committee, eci.Path, eci.Extra
+	ci.ID, ci.AssetType, ci.ConvertType, ci.TxHash, ci.PubKey, ci.Amount, ci.FeeAmount, ci.Committee, ci.Path, ci.RouterAddr, ci.Extra = eci.ID, eci.AssetType, eci.ConvertType, eci.TxHash, eci.PubKey, eci.Amount, eci.FeeAmount, eci.Committee, eci.Path, eci.RouterAddr, eci.Extra
 	return nil
 }
 
@@ -105,6 +107,7 @@ func (ci *ConvertItem) EncodeRLP(w io.Writer) error {
 		FeeAmount:   ci.FeeAmount,
 		Committee:   ci.Committee,
 		Path:        ci.Path,
+		RouterAddr:  ci.RouterAddr,
 		Extra:       ci.Extra,
 	})
 }
@@ -119,6 +122,7 @@ func (ci *ConvertItem) Clone() *ConvertItem {
 		Amount:      new(big.Int).Set(ci.Amount),
 		FeeAmount:   new(big.Int).Set(ci.FeeAmount),
 		Committee:   common.HexToAddress(ci.Committee.String()),
+		RouterAddr:  common.HexToAddress(ci.RouterAddr.String()),
 		Extra:       CopyVotePk(ci.Extra),
 	}
 
@@ -135,6 +139,6 @@ func CopyVotePk(pk []byte) []byte {
 }
 
 type UsedItem struct {
-	Atype 	uint8
-	TxHash  common.Hash
+	Atype  uint8
+	TxHash common.Hash
 }
