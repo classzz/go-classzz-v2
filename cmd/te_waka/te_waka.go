@@ -47,41 +47,6 @@ const (
 	TeWakaAmount           = 100
 )
 
-func checkFee(fee *big.Int) {
-	if fee.Sign() < 0 || fee.Cmp(vm.Base) > 0 {
-		printError("Please set correct fee value")
-	}
-}
-
-func getPubKey(ctx *cli.Context, conn *czzclient.Client) (string, []byte, error) {
-	var (
-		pubkey string
-		err    error
-	)
-
-	if ctx.GlobalIsSet(PubKeyKeyFlag.Name) {
-		pubkey = ctx.GlobalString(PubKeyKeyFlag.Name)
-	} else if ctx.GlobalIsSet(BFTKeyKeyFlag.Name) {
-		bftKey, err := crypto.HexToECDSA(ctx.GlobalString(BFTKeyKeyFlag.Name))
-		if err != nil {
-			printError("bft key error", err)
-		}
-		pk := crypto.FromECDSAPub(&bftKey.PublicKey)
-		pubkey = common.Bytes2Hex(pk)
-	} else {
-		pubkey, err = conn.Pubkey(context.Background())
-		if err != nil {
-			printError("get pubkey error", err)
-		}
-	}
-
-	pk := common.Hex2Bytes(pubkey)
-	if err = vm.ValidPk(pk); err != nil {
-		printError("ValidPk error", err)
-	}
-	return pubkey, pk, err
-}
-
 func sendContractTransaction(client *czzclient.Client, from, toAddress common.Address, value *big.Int, privateKey *ecdsa.PrivateKey, input []byte) common.Hash {
 	// Ensure a valid value field and resolve the account nonce
 	nonce, err := client.PendingNonceAt(context.Background(), from)
@@ -125,41 +90,6 @@ func sendContractTransaction(client *czzclient.Client, from, toAddress common.Ad
 	}
 
 	return signedTx.Hash()
-}
-
-func createKs() {
-	ks := keystore.NewKeyStore("./createKs", keystore.StandardScryptN, keystore.StandardScryptP)
-	password := "secret"
-	account, err := ks.NewAccount(password)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(account.Address.Hex()) // 0x20F8D42FB0F667F2E53930fed426f225752453b3
-}
-
-func importKs(password string) common.Address {
-	file, err := getAllFile(datadirDefaultKeyStore)
-	if err != nil {
-		log.Fatal(err)
-	}
-	cks, _ := filepath.Abs(datadirDefaultKeyStore)
-
-	jsonBytes, err := ioutil.ReadFile(filepath.Join(cks, file))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//password := "secret"
-	key, err := keystore.DecryptKey(jsonBytes, password)
-	if err != nil {
-		log.Fatal(err)
-	}
-	priKey = key.PrivateKey
-	from = crypto.PubkeyToAddress(priKey.PublicKey)
-
-	fmt.Println("address ", from.Hex())
-	return from
 }
 
 func loadPrivateKey(path string) common.Address {
@@ -350,29 +280,3 @@ func loadSigningKey(keyfile string) common.Address {
 	//fmt.Println("address ", from.Hex(), "key", hex.EncodeToString(crypto.FromECDSA(priKey)))
 	return from
 }
-
-//func queryRewardInfo(conn *czzclient.Client, number uint64, start bool) {
-//	sheader, err := conn.SnailHeaderByNumber(context.Background(), nil)
-//	if err != nil {
-//		printError("get snail block error", err)
-//	}
-//	queryReward := uint64(0)
-//	currentReward := sheader.Number.ToInt().Uint64() - SnailRewardInterval
-//	if number > currentReward {
-//		printError("reward no release current reward height ", currentReward)
-//	} else if number > 0 || start {
-//		queryReward = number
-//	} else {
-//		queryReward = currentReward
-//	}
-//	var crc map[string]interface{}
-//	crc, err = conn.GetChainRewardContent(context.Background(), from, new(big.Int).SetUint64(queryReward))
-//	if err != nil {
-//		printError("get chain reward content error", err)
-//	}
-//	if info, ok := crc["stakingReward"]; ok {
-//		if info, ok := info.([]interface{}); ok {
-//			fmt.Println("queryRewardInfo", info)
-//		}
-//	}
-//}

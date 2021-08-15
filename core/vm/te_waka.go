@@ -58,12 +58,12 @@ var (
 		ExpandedTxConvert_OCzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104},
 	}
 
-	ethPoolAddr  = "0xEd8d27a202c9aBF50c928E7a8d5f7D97D3292cAA"
+	ethPoolAddr  = "0xB55c0fF37E2bA3Fd36AA03881373495A563E723c"
 	hecoPoolAddr = ""
 	bscPoolAddr  = ""
 	okexPoolAddr = ""
 
-	burnTopics = "0x0c0f71b4c3c0f4c42e7ab9336ecc8325bd6fb58e3e4f5d5f6818d9ed3957dfb2"
+	burnTopics = "0xd9ea7526cdb50f406e2429329000efebfed52962417d0ec902ab8ba0c3bc5f71"
 	mintTopics = "0x8fb5c7bffbb272c541556c455c74269997b816df24f56dd255c2391d92d4f1e9"
 )
 
@@ -351,7 +351,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.RouterAddr, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -877,6 +877,9 @@ const TeWakaABI = `
         "type": "address[]",
         "name": "Path"
       },{
+        "type": "address",
+        "name": "RouterAddr"
+      },{
         "type": "bytes",
         "name": "PubKey"
       },{
@@ -1055,7 +1058,7 @@ const CzzRouterABI = `
 			{
 				"indexed": false,
 				"internalType": "address",
-				"name": "toRouterAddr",
+				"name": "RouterAddr",
 				"type": "address"
 			},
 			{
