@@ -49,7 +49,7 @@ var (
 	mixImpawn = new(big.Int).Mul(big.NewInt(1000), baseUnit)
 	Base      = new(big.Int).SetUint64(10000)
 
-	// i.e. contractAddress = 0x000000000000000000747275657374616b696E67
+	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
 	CoinPools     = map[uint8]common.Address{
 		ExpandedTxConvert_ECzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 101},
@@ -59,7 +59,7 @@ var (
 	}
 
 	ethPoolAddr  = "0xB55c0fF37E2bA3Fd36AA03881373495A563E723c"
-	hecoPoolAddr = ""
+	hecoPoolAddr = "0x486c75523eC8A6797d66eD7Bf41F5079DCfDE185"
 	bscPoolAddr  = ""
 	okexPoolAddr = ""
 
@@ -378,7 +378,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	t0 := time.Now()
 	args := struct {
 		ConvertType *big.Int
-		TxHash      common.Hash
+		TxHash      string
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["confirm"]
@@ -388,6 +388,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, ErrStakingInvalidInput
 	}
 
+	TxHash := common.HexToHash(args.TxHash)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
@@ -400,29 +401,29 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	var item *types.ConvertItem
 	ConvertType := uint8(args.ConvertType.Uint64())
 
-	if exit := tewaka.HasItem(&types.UsedItem{ConvertType, args.TxHash}, evm.StateDB); exit {
+	if exit := tewaka.HasItem(&types.UsedItem{ConvertType, TxHash}, evm.StateDB); exit {
 		return nil, ErrTxhashAlreadyInput
 	}
 
 	switch ConvertType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, ConvertType, args.TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
 	}
@@ -430,7 +431,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	t2 := time.Now()
 
 	tewaka.Confirm(item)
-	tewaka.SetItem(&types.UsedItem{ConvertType, args.TxHash})
+	tewaka.SetItem(&types.UsedItem{ConvertType, TxHash})
 
 	t3 := time.Now()
 	err = tewaka.Save(evm.StateDB, TeWaKaAddress)
@@ -441,7 +442,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["confirm"]
-	logData, err := event.Inputs.Pack(item.ID, item.AssetType, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, big.NewInt(int64(item.AssetType)), args.ConvertType, item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -518,7 +519,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["casting"]
-	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.TxHash, item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -702,6 +703,7 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "MintToken", txLog.Data); err != nil {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
 	}
+	logs.To = common.BytesToAddress(txLog.Topics[1][:])
 
 	var item *types.ConvertItem
 	for _, v := range tewaka.ConvertItems {
@@ -733,7 +735,7 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	}
 
 	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
-	if logs.Amount.Cmp(amount2) != 0 {
+	if logs.AmountIn.Cmp(amount2) != 0 {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.Amount, amount2)
 	}
 
