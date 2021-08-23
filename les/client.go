@@ -49,7 +49,7 @@ import (
 	"github.com/classzz/go-classzz-v2/rpc"
 )
 
-type LightClasszz struct {
+type lightClasszz struct {
 	lesCommons
 
 	peers              *serverPeerSet
@@ -79,7 +79,7 @@ type LightClasszz struct {
 }
 
 // New creates an instance of the light client.
-func New(stack *node.Node, config *czzconfig.Config) (*LightClasszz, error) {
+func New(stack *node.Node, config *czzconfig.Config) (*lightClasszz, error) {
 	chainDb, err := stack.OpenDatabase("lightchaindata", config.DatabaseCache, config.DatabaseHandles, "czz/db/chaindata/", false)
 	if err != nil {
 		return nil, err
@@ -88,14 +88,14 @@ func New(stack *node.Node, config *czzconfig.Config) (*LightClasszz, error) {
 	if err != nil {
 		return nil, err
 	}
-	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis)
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideLondon)
 	if _, isCompat := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !isCompat {
 		return nil, genesisErr
 	}
 	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	peers := newServerPeerSet()
-	leth := &LightClasszz{
+	leth := &lightClasszz{
 		lesCommons: lesCommons{
 			genesis:     genesisHash,
 			config:      config,
@@ -199,7 +199,7 @@ func New(stack *node.Node, config *czzconfig.Config) (*LightClasszz, error) {
 }
 
 // VfluxRequest sends a batch of requests to the given node through discv5 UDP TalkRequest and returns the responses
-func (s *LightClasszz) VfluxRequest(n *enode.Node, reqs vflux.Requests) vflux.Replies {
+func (s *lightClasszz) VfluxRequest(n *enode.Node, reqs vflux.Requests) vflux.Replies {
 	if !s.udpEnabled {
 		return nil
 	}
@@ -214,7 +214,7 @@ func (s *LightClasszz) VfluxRequest(n *enode.Node, reqs vflux.Requests) vflux.Re
 
 // vfxVersion returns the version number of the "les" service subdomain of the vflux UDP
 // service, as advertised in the ENR record
-func (s *LightClasszz) vfxVersion(n *enode.Node) uint {
+func (s *lightClasszz) vfxVersion(n *enode.Node) uint {
 	if n.Seq() == 0 {
 		var err error
 		if !s.udpEnabled {
@@ -238,7 +238,7 @@ func (s *LightClasszz) vfxVersion(n *enode.Node) uint {
 
 // prenegQuery sends a capacity query to the given server node to determine whether
 // a connection slot is immediately available
-func (s *LightClasszz) prenegQuery(n *enode.Node) int {
+func (s *lightClasszz) prenegQuery(n *enode.Node) int {
 	if s.vfxVersion(n) < 1 {
 		// UDP query not supported, always try TCP connection
 		return 1
@@ -284,22 +284,22 @@ func (s *LightDummyAPI) Mining() bool {
 
 // APIs returns the collection of RPC services the classzz package offers.
 // NOTE, some of these services probably need to be moved to somewhere else.
-func (s *LightClasszz) APIs() []rpc.API {
+func (s *lightClasszz) APIs() []rpc.API {
 	apis := czzapi.GetAPIs(s.ApiBackend)
 	apis = append(apis, s.engine.APIs(s.BlockChain().HeaderChain())...)
 	return append(apis, []rpc.API{
 		{
-			Namespace: "eth",
+			Namespace: "czz",
 			Version:   "1.0",
 			Service:   &LightDummyAPI{},
 			Public:    true,
 		}, {
-			Namespace: "eth",
+			Namespace: "czz",
 			Version:   "1.0",
 			Service:   downloader.NewPublicDownloaderAPI(s.handler.downloader, s.eventMux),
 			Public:    true,
 		}, {
-			Namespace: "eth",
+			Namespace: "czz",
 			Version:   "1.0",
 			Service:   filters.NewPublicFilterAPI(s.ApiBackend, true, 5*time.Minute),
 			Public:    true,
@@ -322,19 +322,19 @@ func (s *LightClasszz) APIs() []rpc.API {
 	}...)
 }
 
-func (s *LightClasszz) ResetWithGenesisBlock(gb *types.Block) {
+func (s *lightClasszz) ResetWithGenesisBlock(gb *types.Block) {
 	s.blockchain.ResetWithGenesisBlock(gb)
 }
 
-func (s *LightClasszz) BlockChain() *light.LightChain      { return s.blockchain }
-func (s *LightClasszz) TxPool() *light.TxPool              { return s.txPool }
-func (s *LightClasszz) Engine() consensus.Engine           { return s.engine }
-func (s *LightClasszz) LesVersion() int                    { return int(ClientProtocolVersions[0]) }
-func (s *LightClasszz) Downloader() *downloader.Downloader { return s.handler.downloader }
-func (s *LightClasszz) EventMux() *event.TypeMux           { return s.eventMux }
+func (s *lightClasszz) BlockChain() *light.LightChain      { return s.blockchain }
+func (s *lightClasszz) TxPool() *light.TxPool              { return s.txPool }
+func (s *lightClasszz) Engine() consensus.Engine           { return s.engine }
+func (s *lightClasszz) LesVersion() int                    { return int(ClientProtocolVersions[0]) }
+func (s *lightClasszz) Downloader() *downloader.Downloader { return s.handler.downloader }
+func (s *lightClasszz) EventMux() *event.TypeMux           { return s.eventMux }
 
 // Protocols returns all the currently configured network protocols to start.
-func (s *LightClasszz) Protocols() []p2p.Protocol {
+func (s *lightClasszz) Protocols() []p2p.Protocol {
 	return s.makeProtocols(ClientProtocolVersions, s.handler.runPeer, func(id enode.ID) interface{} {
 		if p := s.peers.peer(id.String()); p != nil {
 			return p.Info()
@@ -345,7 +345,7 @@ func (s *LightClasszz) Protocols() []p2p.Protocol {
 
 // Start implements node.Lifecycle, starting all internal goroutines needed by the
 // light classzz protocol implementation.
-func (s *LightClasszz) Start() error {
+func (s *lightClasszz) Start() error {
 	log.Warn("Light client mode is an experimental feature")
 
 	if s.udpEnabled && s.p2pServer.DiscV5 == nil {
@@ -368,7 +368,7 @@ func (s *LightClasszz) Start() error {
 
 // Stop implements node.Lifecycle, terminating all internal goroutines used by the
 // Classzz protocol.
-func (s *LightClasszz) Stop() error {
+func (s *lightClasszz) Stop() error {
 	close(s.closeCh)
 	s.serverPool.Stop()
 	s.peers.close()

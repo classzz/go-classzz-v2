@@ -133,6 +133,10 @@ func (b *EthAPIBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash r
 	return nil, errors.New("invalid arguments; neither block nor hash specified")
 }
 
+func (b *EthAPIBackend) PendingBlockAndReceipts() (*types.Block, types.Receipts) {
+	return b.czz.miner.PendingBlockAndReceipts()
+}
+
 func (b *EthAPIBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
 	// Pending state is only known by the miner
 	if number == rpc.PendingBlockNumber {
@@ -231,7 +235,7 @@ func (b *EthAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 }
 
 func (b *EthAPIBackend) GetPoolTransactions() (types.Transactions, error) {
-	pending, err := b.czz.txPool.Pending()
+	pending, err := b.czz.txPool.Pending(false)
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +267,10 @@ func (b *EthAPIBackend) TxPoolContent() (map[common.Address]types.Transactions, 
 	return b.czz.TxPool().Content()
 }
 
+func (b *EthAPIBackend) TxPoolContentFrom(addr common.Address) (types.Transactions, types.Transactions) {
+	return b.czz.TxPool().ContentFrom(addr)
+}
+
 func (b *EthAPIBackend) TxPool() *core.TxPool {
 	return b.czz.TxPool()
 }
@@ -275,8 +283,12 @@ func (b *EthAPIBackend) Downloader() *downloader.Downloader {
 	return b.czz.Downloader()
 }
 
-func (b *EthAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return b.gpo.SuggestPrice(ctx)
+func (b *EthAPIBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return b.gpo.SuggestTipCap(ctx)
+}
+
+func (b *EthAPIBackend) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (firstBlock *big.Int, reward [][]*big.Int, baseFee []*big.Int, gasUsedRatio []float64, err error) {
+	return b.gpo.FeeHistory(ctx, blockCount, lastBlock, rewardPercentiles)
 }
 
 func (b *EthAPIBackend) ChainDb() czzdb.Database {

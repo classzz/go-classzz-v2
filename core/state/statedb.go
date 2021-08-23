@@ -20,7 +20,6 @@ package state
 import (
 	"errors"
 	"fmt"
-	"github.com/classzz/go-classzz-v2/core/vm"
 	"math/big"
 	"sort"
 	"time"
@@ -44,9 +43,6 @@ type revision struct {
 var (
 	// emptyRoot is the known root hash of an empty trie.
 	emptyRoot = common.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
-
-	// Pos locked key
-	lockedPosition = common.BytesToHash([]byte{1})
 )
 
 type proofList [][]byte
@@ -58,11 +54,6 @@ func (n *proofList) Put(key []byte, value []byte) error {
 
 func (n *proofList) Delete(key []byte) error {
 	panic("not supported")
-}
-
-func lockedKey(addr common.Address) (h common.Hash) {
-	base := append(common.BytesToHash(addr[:]).Bytes(), lockedPosition.Bytes()...)
-	return crypto.Keccak256Hash(base)
 }
 
 // StateDB structs within the classzz protocol are used to store anything
@@ -98,10 +89,10 @@ type StateDB struct {
 	// The refund counter, also used by state transitioning.
 	refund uint64
 
-	thash, bhash common.Hash
-	txIndex      int
-	logs         map[common.Hash][]*types.Log
-	logSize      uint
+	thash   common.Hash
+	txIndex int
+	logs    map[common.Hash][]*types.Log
+	logSize uint
 
 	preimages map[common.Hash][]byte
 
@@ -195,15 +186,18 @@ func (s *StateDB) AddLog(log *types.Log) {
 	s.journal.append(addLogChange{txhash: s.thash})
 
 	log.TxHash = s.thash
-	log.BlockHash = s.bhash
 	log.TxIndex = uint(s.txIndex)
 	log.Index = s.logSize
 	s.logs[s.thash] = append(s.logs[s.thash], log)
 	s.logSize++
 }
 
-func (s *StateDB) GetLogs(hash common.Hash) []*types.Log {
-	return s.logs[hash]
+func (s *StateDB) GetLogs(hash common.Hash, blockHash common.Hash) []*types.Log {
+	logs := s.logs[hash]
+	for _, l := range logs {
+		l.BlockHash = blockHash
+	}
+	return logs
 }
 
 func (s *StateDB) Logs() []*types.Log {
@@ -281,11 +275,6 @@ func (s *StateDB) TxIndex() int {
 	return s.txIndex
 }
 
-// BlockHash returns the current block hash set by Prepare.
-func (s *StateDB) BlockHash() common.Hash {
-	return s.bhash
-}
-
 func (s *StateDB) GetCode(addr common.Address) []byte {
 	stateObject := s.getStateObject(addr)
 	if stateObject != nil {
@@ -319,19 +308,6 @@ func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	return common.Hash{}
 }
 
-func (s *StateDB) GetTeWakaState(addr common.Address, hash common.Hash) []byte {
-	stateObject := s.GetOrNewStateObject(addr)
-	if stateObject != nil {
-		return stateObject.GetTeWakaState(s.db, hash)
-	}
-	return nil
-}
-
-func (self *StateDB) GetTeWakaStateLocked(addr common.Address) *big.Int {
-	key := lockedKey(addr)
-	return self.GetState(vm.TeWaKaAddress, key).Big()
-}
-
 // GetProof returns the Merkle proof for a given account.
 func (s *StateDB) GetProof(addr common.Address) ([][]byte, error) {
 	return s.GetProofByHash(crypto.Keccak256Hash(addr.Bytes()))
@@ -346,17 +322,6 @@ func (s *StateDB) GetProofByHash(addrHash common.Hash) ([][]byte, error) {
 
 // GetStorageProof returns the Merkle proof for given storage slot.
 func (s *StateDB) GetStorageProof(a common.Address, key common.Hash) ([][]byte, error) {
-	var proof proofList
-	trie := s.StorageTrie(a)
-	if trie == nil {
-		return proof, errors.New("storage trie for requested address does not exist")
-	}
-	err := trie.Prove(crypto.Keccak256(key.Bytes()), 0, &proof)
-	return proof, err
-}
-
-// GetStorageProofByHash returns the Merkle proof for given storage slot.
-func (s *StateDB) GetStorageProofByHash(a common.Address, key common.Hash) ([][]byte, error) {
 	var proof proofList
 	trie := s.StorageTrie(a)
 	if trie == nil {
@@ -448,13 +413,6 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	}
 }
 
-func (s *StateDB) SetTeWakaState(addr common.Address, key common.Hash, value []byte) {
-	stateObject := s.GetOrNewStateObject(addr)
-	if stateObject != nil {
-		stateObject.SetTeWakaState(s.db, key, value)
-	}
-}
-
 // SetStorage replaces the entire storage for the specified account with given
 // storage. This function should only be used for debugging.
 func (s *StateDB) SetStorage(addr common.Address, storage map[common.Hash]common.Hash) {
@@ -499,13 +457,10 @@ func (s *StateDB) updateStateObject(obj *stateObject) {
 	addr := obj.Address()
 
 	data, err := rlp.EncodeToBytes(obj)
-
 	if err != nil {
 		panic(fmt.Errorf("can't encode object at %x: %v", addr[:], err))
 	}
-	//fmt.Println("addr.Bytes() updateStateObject", addr.Bytes())
-	//fmt.Println("obj updateStateObject", len(data))
-	if err = s.trie.TryUpdate(addr.Bytes(), data); err != nil {
+	if err = s.trie.TryUpdate(addr[:], data); err != nil {
 		s.setError(fmt.Errorf("updateStateObject (%x) error: %v", addr[:], err))
 	}
 
@@ -547,7 +502,6 @@ func (s *StateDB) getStateObject(addr common.Address) *stateObject {
 // destructed object instead of wiping all knowledge about the state object.
 func (s *StateDB) getDeletedStateObject(addr common.Address) *stateObject {
 	// Prefer live objects if any is available
-	//fmt.Println("addr.Bytes() getDeletedStateObject", addr.Bytes())
 	if obj := s.stateObjects[addr]; obj != nil {
 		return obj
 	}
@@ -630,7 +584,6 @@ func (s *StateDB) createObject(addr common.Address) (newobj, prev *stateObject) 
 		}
 	}
 	newobj = newObject(s, addr, Account{})
-	newobj.setNonce(0) // sets the object to dirty
 	if prev == nil {
 		s.journal.append(createObjectChange{account: &addr})
 	} else {
@@ -687,28 +640,6 @@ func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common
 		}
 	}
 	return nil
-}
-
-// ForEachTeWakaStorage is callback function. cb return true indicating like to continue, return false indicating stop
-func (self *StateDB) ForEachTeWakaStorage(addr common.Address, cb func(key common.Hash, value []byte) bool) {
-	stateObject := self.getStateObject(addr)
-	if stateObject == nil {
-		return
-	}
-	it := trie.NewIterator(stateObject.getTrie(self.db).NodeIterator(nil))
-	for it.Next() {
-		// ignore cached values
-		key := common.BytesToHash(self.trie.GetKey(it.Key))
-		if value, dirty := stateObject.originTeWakaStorage[key]; dirty {
-			if !cb(key, value) {
-				return
-			}
-			continue
-		}
-		if !cb(key, it.Value) {
-			return
-		}
-	}
 }
 
 // Copy creates a deep, independent copy of the state.
@@ -947,11 +878,10 @@ func (s *StateDB) IntermediateRoot(deleteEmptyObjects bool) common.Hash {
 	return s.trie.Hash()
 }
 
-// Prepare sets the current transaction hash and index and block hash which is
+// Prepare sets the current transaction hash and index which are
 // used when the EVM emits new state logs.
-func (s *StateDB) Prepare(thash, bhash common.Hash, ti int) {
+func (s *StateDB) Prepare(thash common.Hash, ti int) {
 	s.thash = thash
-	s.bhash = bhash
 	s.txIndex = ti
 	s.accessList = newAccessList()
 }
@@ -1046,7 +976,7 @@ func (s *StateDB) Commit(deleteEmptyObjects bool) (common.Hash, error) {
 // - Add precompiles to access list (2929)
 // - Add the contents of the optional tx access list (2930)
 //
-// This method should only be called if Yolov3/Berlin/2929+2930 is applicable at the current number.
+// This method should only be called if Berlin/2929+2930 is applicable at the current number.
 func (s *StateDB) PrepareAccessList(sender common.Address, dst *common.Address, precompiles []common.Address, list types.AccessList) {
 	s.AddAddressToAccessList(sender)
 	if dst != nil {
@@ -1097,14 +1027,4 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 // SlotInAccessList returns true if the given (address, slot)-tuple is in the access list.
 func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addressPresent bool, slotPresent bool) {
 	return s.accessList.Contains(addr, slot)
-}
-
-func (s *StateDB) HasRecord(atype uint64,hash common.Hash) bool {
-	return rawdb.HasRecord(s.db.TrieDB().DiskDB(),atype, hash)
-}
-func (s *StateDB) WriteRecord(atype uint64,hash common.Hash) {
-	rawdb.WriteRecord(s.db.TrieDB().DiskDB(),atype, hash)
-}
-func (s *StateDB) DeleteRecord(atype uint64,hash common.Hash) {
-	rawdb.DeleteRecord(s.db.TrieDB().DiskDB(),atype, hash)
 }

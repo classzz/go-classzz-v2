@@ -341,9 +341,7 @@ func NewBlockChain(db czzdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
-	amount, _ := bc.GetCurrentStakingByUser(bc.CurrentHeader().Coinbase)
-	factor := consensus.MakeFactorForMine(amount)
-	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true, factor)
+	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true)
 
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for hash := range BadHashes {
@@ -955,14 +953,14 @@ func (bc *BlockChain) GetBlocksFromHash(hash common.Hash, n int) (blocks []*type
 
 // GetUnclesInChain retrieves all the uncles from a given block backwards until
 // a specific distance is reached.
-//func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.Header {
-//	uncles := []*types.Header{}
-//	for i := 0; block != nil && i < length; i++ {
-//		uncles = append(uncles, block.Uncles()...)
-//		block = bc.GetBlock(block.ParentHash(), block.NumberU64()-1)
-//	}
-//	return uncles
-//}
+func (bc *BlockChain) GetUnclesInChain(block *types.Block, length int) []*types.Header {
+	uncles := []*types.Header{}
+	for i := 0; block != nil && i < length; i++ {
+		uncles = append(uncles, block.Uncles()...)
+		block = bc.GetBlock(block.ParentHash(), block.NumberU64()-1)
+	}
+	return uncles
+}
 
 // TrieNode retrieves a blob of data associated with a trie node
 // either from ephemeral in-memory cache, or from persistent storage.
@@ -1451,29 +1449,6 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
-	//for _, v:= range block.Transactions(){
-	//	if *v.To() == vm.TeWaKaAddress{
-	//
-	//		args := struct {
-	//			AssetType   *big.Int
-	//			ConvertType *big.Int
-	//			TxHash      string
-	//		}{}
-	//
-	//		method, _ := vm.AbiTeWaKa.MethodById(v.Data())
-	//		if method.Name == "convert" {
-	//			method, _ := vm.AbiTeWaKa.Methods["convert"]
-	//			err = method.Inputs.UnpackAtomic(&args, v.Data())
-	//		}else if method.Name == "confirm" {
-	//			method, _ := vm.AbiTeWaKa.Methods["confirm"]
-	//			err = method.Inputs.UnpackAtomic(&args, v.Data())
-	//		}else {
-	//			break
-	//		}
-	//		state.WriteRecord(common.HexToHash(args.TxHash))
-	//	}
-	//}
-
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -1497,7 +1472,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 		log.Crit("Failed to write block into disk", "err", err)
 	}
 	// Commit all cached state changes into underlying memory database.
-	root, err := state.Commit(true)
+	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
 	if err != nil {
 		return NonStatTy, err
 	}
@@ -1708,16 +1683,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	// Start the parallel header verifier
 	headers := make([]*types.Header, len(chain))
 	seals := make([]bool, len(chain))
-	factors := make([]*big.Int, len(chain))
 
 	for i, block := range chain {
 		headers[i] = block.Header()
 		seals[i] = verifySeals
-		amount, _ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
-		factor := consensus.MakeFactorForMine(amount)
-		factors[i] = factor
 	}
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals, factors)
+	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
 	defer close(abort)
 
 	// Peek the error for the first block to decide the directing import logic
@@ -1814,8 +1785,8 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[block.Hash()] {
-			bc.reportBlock(block, nil, ErrBlacklistedHash)
-			return it.index, ErrBlacklistedHash
+			bc.reportBlock(block, nil, ErrBannedHash)
+			return it.index, ErrBannedHash
 		}
 		// If the block is known (in the middle of the chain), it's a special case for
 		// Clique blocks where they can share state among each other, so importing an
@@ -1828,7 +1799,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 				logger = log.Warn
 			}
 			logger("Inserted known block", "number", block.Number(), "hash", block.Hash(),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(),
+				"uncles", len(block.Uncles()), "txs", len(block.Transactions()), "gas", block.GasUsed(),
 				"root", block.Root())
 
 			// Special case. Commit the empty receipt slice if we meet the known
@@ -1941,7 +1912,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		switch status {
 		case CanonStatTy:
 			log.Debug("Inserted new block", "number", block.Number(), "hash", block.Hash(),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(),
+				"uncles", len(block.Uncles()), "txs", len(block.Transactions()), "gas", block.GasUsed(),
 				"elapsed", common.PrettyDuration(time.Since(start)),
 				"root", block.Root())
 
@@ -1953,7 +1924,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash(),
 				"diff", block.Difficulty(), "elapsed", common.PrettyDuration(time.Since(start)),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(),
+				"txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()),
 				"root", block.Root())
 
 		default:
@@ -1961,7 +1932,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 			// a log, instead of trying to track down blocks imports that don't emit logs.
 			log.Warn("Inserted block with unknown status", "number", block.Number(), "hash", block.Hash(),
 				"diff", block.Difficulty(), "elapsed", common.PrettyDuration(time.Since(start)),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(),
+				"txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()),
 				"root", block.Root())
 		}
 		stats.processed++
@@ -2046,7 +2017,7 @@ func (bc *BlockChain) insertSideChain(block *types.Block, it *insertIterator) (i
 			}
 			log.Debug("Injected sidechain block", "number", block.Number(), "hash", block.Hash(),
 				"diff", block.Difficulty(), "elapsed", common.PrettyDuration(time.Since(start)),
-				"txs", len(block.Transactions()), "gas", block.GasUsed(),
+				"txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()),
 				"root", block.Root())
 		}
 	}
@@ -2411,14 +2382,7 @@ Error: %v
 // because nonces can be verified sparsely, not needing to check each.
 func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	start := time.Now()
-	factors := make([]*big.Int, len(chain))
-
-	for i, hh := range chain {
-		amount, _ := bc.GetCurrentStakingByUser(hh.Coinbase)
-		factor := consensus.MakeFactorForMine(amount)
-		factors[i] = factor
-	}
-	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq, factors); err != nil {
+	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
 		return i, err
 	}
 
@@ -2453,12 +2417,22 @@ func (bc *BlockChain) GetTdByHash(hash common.Hash) *big.Int {
 // GetHeader retrieves a block header from the database by hash and number,
 // caching it if found.
 func (bc *BlockChain) GetHeader(hash common.Hash, number uint64) *types.Header {
+	// Blockchain might have cached the whole block, only if not go to headerchain
+	if block, ok := bc.blockCache.Get(hash); ok {
+		return block.(*types.Block).Header()
+	}
+
 	return bc.hc.GetHeader(hash, number)
 }
 
 // GetHeaderByHash retrieves a block header from the database by hash, caching it if
 // found.
 func (bc *BlockChain) GetHeaderByHash(hash common.Hash) *types.Header {
+	// Blockchain might have cached the whole block, only if not go to headerchain
+	if block, ok := bc.blockCache.Get(hash); ok {
+		return block.(*types.Block).Header()
+	}
+
 	return bc.hc.GetHeaderByHash(hash)
 }
 
@@ -2545,15 +2519,4 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 // block processing has started while false means it has stopped.
 func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscription {
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
-}
-
-func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int, error) {
-	// maybe get cache on here
-	i := vm.NewTeWakaImpl()
-	state, err := bc.State()
-	if err != nil {
-		i.Load(state, vm.TeWaKaAddress)
-		return i.GetStakingByUser(address), nil
-	}
-	return nil, nil
 }

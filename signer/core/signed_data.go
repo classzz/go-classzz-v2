@@ -38,6 +38,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/crypto"
 	"github.com/classzz/go-classzz-v2/rlp"
+	"github.com/classzz/go-classzz-v2/signer/core/apitypes"
 )
 
 type SigFormat struct {
@@ -183,12 +184,12 @@ func (api *SignerAPI) SignData(ctx context.Context, contentType string, addr com
 // This method returns the mimetype for signing along with the request
 func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType string, addr common.MixedcaseAddress, data interface{}) (*SignDataRequest, bool, error) {
 	var (
-		req         *SignDataRequest
-		useClasszzV = true // Default to use V = 27 or 28, the legacy Classzz format
+		req          *SignDataRequest
+		useEthereumV = true // Default to use V = 27 or 28, the legacy Classzz format
 	)
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		return nil, useClasszzV, err
+		return nil, useEthereumV, err
 	}
 
 	switch mediaType {
@@ -196,7 +197,7 @@ func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType 
 		// Data with an intended validator
 		validatorData, err := UnmarshalValidatorData(data)
 		if err != nil {
-			return nil, useClasszzV, err
+			return nil, useEthereumV, err
 		}
 		sighash, msg := SignTextValidator(validatorData)
 		messages := []*NameValueType{
@@ -226,15 +227,15 @@ func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType 
 		// Clique is the Classzz PoA standard
 		stringData, ok := data.(string)
 		if !ok {
-			return nil, useClasszzV, fmt.Errorf("input for %v must be an hex-encoded string", ApplicationClique.Mime)
+			return nil, useEthereumV, fmt.Errorf("input for %v must be an hex-encoded string", ApplicationClique.Mime)
 		}
 		cliqueData, err := hexutil.Decode(stringData)
 		if err != nil {
-			return nil, useClasszzV, err
+			return nil, useEthereumV, err
 		}
 		header := &types.Header{}
 		if err := rlp.DecodeBytes(cliqueData, header); err != nil {
-			return nil, useClasszzV, err
+			return nil, useEthereumV, err
 		}
 		// The incoming clique header is already truncated, sent to us with a extradata already shortened
 		if len(header.Extra) < 65 {
@@ -246,7 +247,7 @@ func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType 
 		// Get back the rlp data, encoded by us
 		sighash, cliqueRlp, err := cliqueHeaderHashAndRlp(header)
 		if err != nil {
-			return nil, useClasszzV, err
+			return nil, useEthereumV, err
 		}
 		messages := []*NameValueType{
 			{
@@ -256,17 +257,17 @@ func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType 
 			},
 		}
 		// Clique uses V on the form 0 or 1
-		useClasszzV = false
+		useEthereumV = false
 		req = &SignDataRequest{ContentType: mediaType, Rawdata: cliqueRlp, Messages: messages, Hash: sighash}
 	default: // also case TextPlain.Mime:
 		// Calculates an Classzz ECDSA signature for:
 		// hash = keccak256("\x19${byteVersion}Classzz Signed Message:\n${message length}${message}")
 		// We expect it to be a string
 		if stringData, ok := data.(string); !ok {
-			return nil, useClasszzV, fmt.Errorf("input for text/plain must be an hex-encoded string")
+			return nil, useEthereumV, fmt.Errorf("input for text/plain must be an hex-encoded string")
 		} else {
 			if textData, err := hexutil.Decode(stringData); err != nil {
-				return nil, useClasszzV, err
+				return nil, useEthereumV, err
 			} else {
 				sighash, msg := accounts.TextAndHash(textData)
 				messages := []*NameValueType{
@@ -282,7 +283,7 @@ func (api *SignerAPI) determineSignatureFormat(ctx context.Context, contentType 
 	}
 	req.Address = addr
 	req.Meta = MetadataFromContext(ctx)
-	return req, useClasszzV, nil
+	return req, useEthereumV, nil
 }
 
 // SignTextWithValidator signs the given message which can be further recovered
@@ -323,7 +324,7 @@ func (api *SignerAPI) SignTypedData(ctx context.Context, addr common.MixedcaseAd
 // signTypedData is identical to the capitalized version, except that it also returns the hash (preimage)
 // - the signature preimage (hash)
 func (api *SignerAPI) signTypedData(ctx context.Context, addr common.MixedcaseAddress,
-	typedData TypedData, validationMessages *ValidationMessages) (hexutil.Bytes, hexutil.Bytes, error) {
+	typedData TypedData, validationMessages *apitypes.ValidationMessages) (hexutil.Bytes, hexutil.Bytes, error) {
 	domainSeparator, err := typedData.HashStruct("EIP712Domain", typedData.Domain.Map())
 	if err != nil {
 		return nil, nil, err

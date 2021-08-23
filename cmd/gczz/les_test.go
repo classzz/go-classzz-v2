@@ -15,25 +15,25 @@ import (
 	"github.com/classzz/go-classzz-v2/rpc"
 )
 
-type gethrpc struct {
+type gczzrpc struct {
 	name     string
 	rpc      *rpc.Client
-	gczz     *testgeth
+	gczz     *testgczz
 	nodeInfo *p2p.NodeInfo
 }
 
-func (g *gethrpc) killAndWait() {
+func (g *gczzrpc) killAndWait() {
 	g.gczz.Kill()
 	g.gczz.WaitExit()
 }
 
-func (g *gethrpc) callRPC(result interface{}, method string, args ...interface{}) {
+func (g *gczzrpc) callRPC(result interface{}, method string, args ...interface{}) {
 	if err := g.rpc.Call(&result, method, args...); err != nil {
 		g.gczz.Fatalf("callRPC %v: %v", method, err)
 	}
 }
 
-func (g *gethrpc) addPeer(peer *gethrpc) {
+func (g *gczzrpc) addPeer(peer *gczzrpc) {
 	g.gczz.Logf("%v.addPeer(%v)", g.name, peer.name)
 	enode := peer.getNodeInfo().Enode
 	peerCh := make(chan *p2p.PeerEvent)
@@ -56,7 +56,7 @@ func (g *gethrpc) addPeer(peer *gethrpc) {
 }
 
 // Use this function instead of `g.nodeInfo` directly
-func (g *gethrpc) getNodeInfo() *p2p.NodeInfo {
+func (g *gczzrpc) getNodeInfo() *p2p.NodeInfo {
 	if g.nodeInfo != nil {
 		return g.nodeInfo
 	}
@@ -65,7 +65,7 @@ func (g *gethrpc) getNodeInfo() *p2p.NodeInfo {
 	return g.nodeInfo
 }
 
-func (g *gethrpc) waitSynced() {
+func (g *gczzrpc) waitSynced() {
 	// Check if it's synced now
 	var result interface{}
 	g.callRPC(&result, "eth_syncing")
@@ -128,46 +128,50 @@ func ipcEndpoint(ipcPath, datadir string) string {
 // the pipe filename instead of folder.
 var nextIPC = uint32(0)
 
-func startGethWithIpc(t *testing.T, name string, args ...string) *gethrpc {
+func startGczzWithIpc(t *testing.T, name string, args ...string) *gczzrpc {
 	ipcName := fmt.Sprintf("gczz-%d.ipc", atomic.AddUint32(&nextIPC, 1))
 	args = append([]string{"--networkid=42", "--port=0", "--ipcpath", ipcName}, args...)
 	t.Logf("Starting %v with rpc: %v", name, args)
 
-	g := &gethrpc{
+	g := &gczzrpc{
 		name: name,
-		gczz: runGeth(t, args...),
+		gczz: runGczz(t, args...),
 	}
-	// wait before we can attach to it. TODO: probe for it properly
-	time.Sleep(1 * time.Second)
-	var err error
 	ipcpath := ipcEndpoint(ipcName, g.gczz.Datadir)
-	if g.rpc, err = rpc.Dial(ipcpath); err != nil {
-		t.Fatalf("%v rpc connect to %v: %v", name, ipcpath, err)
+	// We can't know exactly how long gczz will take to start, so we try 10
+	// times over a 5 second period.
+	var err error
+	for i := 0; i < 10; i++ {
+		time.Sleep(500 * time.Millisecond)
+		if g.rpc, err = rpc.Dial(ipcpath); err == nil {
+			return g
+		}
 	}
-	return g
+	t.Fatalf("%v rpc connect to %v: %v", name, ipcpath, err)
+	return nil
 }
 
-func initGeth(t *testing.T) string {
+func initGczz(t *testing.T) string {
 	args := []string{"--networkid=42", "init", "./testdata/clique.json"}
 	t.Logf("Initializing gczz: %v ", args)
-	g := runGeth(t, args...)
+	g := runGczz(t, args...)
 	datadir := g.Datadir
 	g.WaitExit()
 	return datadir
 }
 
-func startLightServer(t *testing.T) *gethrpc {
-	datadir := initGeth(t)
+func startLightServer(t *testing.T) *gczzrpc {
+	datadir := initGczz(t)
 	t.Logf("Importing keys to gczz")
-	runGeth(t, "--datadir", datadir, "--password", "./testdata/password.txt", "account", "import", "./testdata/key.prv", "--lightkdf").WaitExit()
+	runGczz(t, "--datadir", datadir, "--password", "./testdata/password.txt", "account", "import", "./testdata/key.prv", "--lightkdf").WaitExit()
 	account := "0x02f0d131f1f97aef08aec6e3291b957d9efe7105"
-	server := startGethWithIpc(t, "lightserver", "--allow-insecure-unlock", "--datadir", datadir, "--password", "./testdata/password.txt", "--unlock", account, "--mine", "--light.serve=100", "--light.maxpeers=1", "--nodiscover", "--nat=extip:127.0.0.1", "--verbosity=4")
+	server := startGczzWithIpc(t, "lightserver", "--allow-insecure-unlock", "--datadir", datadir, "--password", "./testdata/password.txt", "--unlock", account, "--mine", "--light.serve=100", "--light.maxpeers=1", "--nodiscover", "--nat=extip:127.0.0.1", "--verbosity=4")
 	return server
 }
 
-func startClient(t *testing.T, name string) *gethrpc {
-	datadir := initGeth(t)
-	return startGethWithIpc(t, name, "--datadir", datadir, "--nodiscover", "--syncmode=light", "--nat=extip:127.0.0.1", "--verbosity=4")
+func startClient(t *testing.T, name string) *gczzrpc {
+	datadir := initGczz(t)
+	return startGczzWithIpc(t, name, "--datadir", datadir, "--nodiscover", "--syncmode=light", "--nat=extip:127.0.0.1", "--verbosity=4")
 }
 
 func TestPriorityClient(t *testing.T) {
@@ -200,7 +204,7 @@ func TestPriorityClient(t *testing.T) {
 		t.Errorf("Expected: # of prio peers == 1, actual: %v", len(peers))
 	}
 
-	nodes := map[string]*gethrpc{
+	nodes := map[string]*gczzrpc{
 		lightServer.getNodeInfo().ID: lightServer,
 		freeCli.getNodeInfo().ID:     freeCli,
 		prioCli.getNodeInfo().ID:     prioCli,

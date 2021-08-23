@@ -244,7 +244,7 @@ func opSha3(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 	interpreter.hasher.Read(interpreter.hasherBuf[:])
 
 	evm := interpreter.evm
-	if evm.vmConfig.EnablePreimageRecording {
+	if evm.Config.EnablePreimageRecording {
 		evm.StateDB.AddPreimage(interpreter.hasherBuf, data)
 	}
 
@@ -569,7 +569,9 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 		input        = scope.Memory.GetCopy(int64(offset.Uint64()), int64(size.Uint64()))
 		gas          = scope.Contract.Gas
 	)
-	gas -= gas / 64
+	if interpreter.evm.chainRules.IsEIP150 {
+		gas -= gas / 64
+	}
 	// reuse size int for stackvalue
 	stackvalue := size
 
@@ -585,7 +587,7 @@ func opCreate(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]b
 	// homestead we must check for CodeStoreOutOfGasError (homestead only
 	// rule) and treat as an error, if the ruleset is frontier we must
 	// ignore this error and pretend the operation was successful.
-	if suberr == ErrCodeStoreOutOfGas {
+	if interpreter.evm.chainRules.IsHomestead && suberr == ErrCodeStoreOutOfGas {
 		stackvalue.Clear()
 	} else if suberr != nil && suberr != ErrCodeStoreOutOfGas {
 		stackvalue.Clear()
@@ -651,7 +653,7 @@ func opCall(pc *uint64, interpreter *EVMInterpreter, scope *ScopeContext) ([]byt
 
 	var bigVal = big0
 	//TODO: use uint256.Int instead of converting with toBig()
-	// By using big0 here, we save an alloc for the most common case (non-czz-transferring contract calls),
+	// By using big0 here, we save an alloc for the most common case (non-ether-transferring contract calls),
 	// but it would make more sense to extend the usage of uint256.Int
 	if !value.IsZero() {
 		gas += params.CallStipend

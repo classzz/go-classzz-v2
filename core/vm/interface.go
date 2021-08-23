@@ -47,13 +47,6 @@ type StateDB interface {
 	GetState(common.Address, common.Hash) common.Hash
 	SetState(common.Address, common.Hash, common.Hash)
 
-	GetTeWakaState(common.Address, common.Hash) []byte
-	SetTeWakaState(common.Address, common.Hash, []byte)
-
-	HasRecord(atype uint64,hash common.Hash) bool
-	WriteRecord(atype uint64,hash common.Hash)
-	DeleteRecord(atype uint64,hash common.Hash)
-
 	Suicide(common.Address) bool
 	HasSuicided(common.Address) bool
 
@@ -81,7 +74,6 @@ type StateDB interface {
 	AddPreimage(common.Hash, []byte)
 
 	ForEachStorage(common.Address, func(common.Hash, common.Hash) bool) error
-	ForEachTeWakaStorage(common.Address, func(common.Hash, []byte) bool)
 }
 
 // CallContext provides a basic interface for the EVM calling conventions. The EVM

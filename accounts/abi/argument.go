@@ -92,31 +92,6 @@ func (arguments Arguments) Unpack(data []byte) ([]interface{}, error) {
 	return arguments.UnpackValues(data)
 }
 
-// unpackAtomic unpacks ( hexdata -> go ) a single value
-func (arguments Arguments) UnpackAtomic(v interface{}, data []byte) error {
-	if len(data) == 0 {
-		if len(arguments) != 0 {
-			return fmt.Errorf("abi: attempting to unmarshall an empty string while arguments are expected")
-		}
-		return nil // Nothing to unmarshal, return
-	}
-	// make sure the passed value is arguments pointer
-	if reflect.Ptr != reflect.ValueOf(v).Kind() {
-		return fmt.Errorf("abi: Unpack(non-pointer %T)", v)
-	}
-	marshalledValues, err := arguments.UnpackValues(data)
-	if err != nil {
-		return err
-	}
-	if len(marshalledValues) == 0 {
-		return fmt.Errorf("abi: Unpack(no-values unmarshalled %T)", v)
-	}
-	if arguments.isTuple() {
-		return arguments.copyTuple(v, marshalledValues)
-	}
-	return arguments.copyAtomic(v, marshalledValues[0])
-}
-
 // UnpackIntoMap performs the operation hexdata -> mapping of argument name to argument value.
 func (arguments Arguments) UnpackIntoMap(v map[string]interface{}, data []byte) error {
 	// Make sure map is not nil
@@ -157,7 +132,7 @@ func (arguments Arguments) Copy(v interface{}, values []interface{}) error {
 	return arguments.copyAtomic(v, values[0])
 }
 
-// copyAtomic unpacks ( hexdata -> go ) a single value
+// unpackAtomic unpacks ( hexdata -> go ) a single value
 func (arguments Arguments) copyAtomic(v interface{}, marshalledValues interface{}) error {
 	dst := reflect.ValueOf(v).Elem()
 	src := reflect.ValueOf(marshalledValues)

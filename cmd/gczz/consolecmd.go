@@ -18,6 +18,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/classzz/go-classzz-v2/cmd/utils"
@@ -118,6 +120,24 @@ func remoteConsole(ctx *cli.Context) error {
 		if ctx.GlobalIsSet(utils.DataDirFlag.Name) {
 			path = ctx.GlobalString(utils.DataDirFlag.Name)
 		}
+		if path != "" {
+			if ctx.GlobalBool(utils.RopstenFlag.Name) {
+				// Maintain compatibility with older Gczz configurations storing the
+				// Ropsten database in `testnet` instead of `ropsten`.
+				legacyPath := filepath.Join(path, "testnet")
+				if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
+					path = legacyPath
+				} else {
+					path = filepath.Join(path, "ropsten")
+				}
+			} else if ctx.GlobalBool(utils.RinkebyFlag.Name) {
+				path = filepath.Join(path, "rinkeby")
+			} else if ctx.GlobalBool(utils.GoerliFlag.Name) {
+				path = filepath.Join(path, "goerli")
+			} else if ctx.GlobalBool(utils.CalaverasFlag.Name) {
+				path = filepath.Join(path, "calaveras")
+			}
+		}
 		endpoint = fmt.Sprintf("%s/gczz.ipc", path)
 	}
 	client, err := dialRPC(endpoint)
@@ -151,7 +171,7 @@ func remoteConsole(ctx *cli.Context) error {
 
 // dialRPC returns a RPC client which connects to the given endpoint.
 // The check for empty endpoint implements the defaulting logic
-// for "gczz attach" and "gczz monitor" with no argument.
+// for "gczz attach" with no argument.
 func dialRPC(endpoint string) (*rpc.Client, error) {
 	if endpoint == "" {
 		endpoint = node.DefaultIPCEndpoint(clientIdentifier)

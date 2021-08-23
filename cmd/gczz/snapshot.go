@@ -18,7 +18,9 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
+	"os"
 	"time"
 
 	"github.com/classzz/go-classzz-v2/cmd/utils"
@@ -58,6 +60,9 @@ var (
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
 					utils.CacheTrieJournalFlag,
 					utils.BloomFilterSizeFlag,
 				},
@@ -85,6 +90,9 @@ the trie clean cache with default directory will be deleted.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
 				},
 				Description: `
 gczz snapshot verify-state <state-root>
@@ -102,6 +110,9 @@ In other words, this command does the snapshot to trie conversion.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
 				},
 				Description: `
 gczz snapshot traverse-state <state-root>
@@ -121,6 +132,9 @@ It's also usable without snapshot enabled.
 				Flags: []cli.Flag{
 					utils.DataDirFlag,
 					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
 				},
 				Description: `
 gczz snapshot traverse-rawstate <state-root>
@@ -130,6 +144,31 @@ verification. The default checking target is the HEAD state. It's basically iden
 to traverse-state, but the check granularity is smaller. 
 
 It's also usable without snapshot enabled.
+`,
+			},
+			{
+				Name:      "dump",
+				Usage:     "Dump a specific block from storage (same as 'gczz dump' but using snapshots)",
+				ArgsUsage: "[? <blockHash> | <blockNum>]",
+				Action:    utils.MigrateFlags(dumpState),
+				Category:  "MISCELLANEOUS COMMANDS",
+				Flags: []cli.Flag{
+					utils.DataDirFlag,
+					utils.AncientFlag,
+					utils.RopstenFlag,
+					utils.RinkebyFlag,
+					utils.GoerliFlag,
+					utils.ExcludeCodeFlag,
+					utils.ExcludeStorageFlag,
+					utils.StartKeyFlag,
+					utils.DumpLimitFlag,
+				},
+				Description: `
+This command is semantically equivalent to 'gczz dump', but uses the snapshots
+as the backend data source, making this command a lot faster. 
+
+The argument is interpreted as block number or hash. If none is provided, the latest
+block is used.
 `,
 			},
 		},
@@ -417,4 +456,74 @@ func parseRoot(input string) (common.Hash, error) {
 		return h, err
 	}
 	return h, nil
+}
+
+func dumpState(ctx *cli.Context) error {
+	stack, _ := makeConfigNode(ctx)
+	defer stack.Close()
+
+	conf, db, root, err := parseDumpConfig(ctx, stack)
+	if err != nil {
+		return err
+	}
+	snaptree, err := snapshot.New(db, trie.NewDatabase(db), 256, root, false, false, false)
+	if err != nil {
+		return err
+	}
+	accIt, err := snaptree.AccountIterator(root, common.BytesToHash(conf.Start))
+	if err != nil {
+		return err
+	}
+	defer accIt.Release()
+
+	log.Info("Snapshot dumping started", "root", root)
+	var (
+		start    = time.Now()
+		logged   = time.Now()
+		accounts uint64
+	)
+	enc := json.NewEncoder(os.Stdout)
+	enc.Encode(struct {
+		Root common.Hash `json:"root"`
+	}{root})
+	for accIt.Next() {
+		account, err := snapshot.FullAccount(accIt.Account())
+		if err != nil {
+			return err
+		}
+		da := &state.DumpAccount{
+			Balance:   account.Balance.String(),
+			Nonce:     account.Nonce,
+			Root:      account.Root,
+			CodeHash:  account.CodeHash,
+			SecureKey: accIt.Hash().Bytes(),
+		}
+		if !conf.SkipCode && !bytes.Equal(account.CodeHash, emptyCode) {
+			da.Code = rawdb.ReadCode(db, common.BytesToHash(account.CodeHash))
+		}
+		if !conf.SkipStorage {
+			da.Storage = make(map[common.Hash]string)
+
+			stIt, err := snaptree.StorageIterator(root, accIt.Hash(), common.Hash{})
+			if err != nil {
+				return err
+			}
+			for stIt.Next() {
+				da.Storage[stIt.Hash()] = common.Bytes2Hex(stIt.Slot())
+			}
+		}
+		enc.Encode(da)
+		accounts++
+		if time.Since(logged) > 8*time.Second {
+			log.Info("Snapshot dumping in progress", "at", accIt.Hash(), "accounts", accounts,
+				"elapsed", common.PrettyDuration(time.Since(start)))
+			logged = time.Now()
+		}
+		if conf.Max > 0 && accounts >= conf.Max {
+			break
+		}
+	}
+	log.Info("Snapshot dumping complete", "accounts", accounts,
+		"elapsed", common.PrettyDuration(time.Since(start)))
+	return nil
 }

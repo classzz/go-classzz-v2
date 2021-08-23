@@ -165,6 +165,7 @@ func (hc *HeaderChain) writeHeaders(headers []*types.Header) (result *headerWrit
 	)
 
 	batch := hc.chainDb.NewBatch()
+	parentKnown := true // Set to true to force hc.HasHeader check the first iteration
 	for i, header := range headers {
 		var hash common.Hash
 		// The headers have already been validated at this point, so we already
@@ -178,8 +179,10 @@ func (hc *HeaderChain) writeHeaders(headers []*types.Header) (result *headerWrit
 		number := header.Number.Uint64()
 		newTD.Add(newTD, header.Difficulty)
 
+		// If the parent was not present, store it
 		// If the header is already known, skip it, otherwise store
-		if !hc.HasHeader(hash, number) {
+		alreadyKnown := parentKnown && hc.HasHeader(hash, number)
+		if !alreadyKnown {
 			// Irrelevant of the canonical status, write the TD and header to the database.
 			rawdb.WriteTd(batch, hash, number, newTD)
 			hc.tdCache.Add(hash, new(big.Int).Set(newTD))
@@ -192,6 +195,7 @@ func (hc *HeaderChain) writeHeaders(headers []*types.Header) (result *headerWrit
 				firstInserted = i
 			}
 		}
+		parentKnown = alreadyKnown
 		lastHeader, lastHash, lastNumber = header, hash, number
 	}
 
@@ -296,7 +300,7 @@ func (hc *HeaderChain) writeHeaders(headers []*types.Header) (result *headerWrit
 	}, nil
 }
 
-func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int,factors []*big.Int) (int, error) {
+func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 {
@@ -311,17 +315,16 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int,
 		}
 		// If the header is a banned one, straight out abort
 		if BadHashes[chain[i].ParentHash] {
-			return i - 1, ErrBlacklistedHash
+			return i - 1, ErrBannedHash
 		}
 		// If it's the last header in the cunk, we need to check it too
 		if i == len(chain)-1 && BadHashes[chain[i].Hash()] {
-			return i, ErrBlacklistedHash
+			return i, ErrBannedHash
 		}
 	}
 
 	// Generate the list of seal verification requests, and start the parallel verifier
 	seals := make([]bool, len(chain))
-
 	if checkFreq != 0 {
 		// In case of checkFreq == 0 all seals are left false.
 		for i := 0; i <= len(seals)/checkFreq; i++ {
@@ -335,7 +338,7 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int,
 		seals[len(seals)-1] = true
 	}
 
-	abort, results := hc.engine.VerifyHeaders(hc, chain, seals,factors)
+	abort, results := hc.engine.VerifyHeaders(hc, chain, seals)
 	defer close(abort)
 
 	// Iterate over the headers and ensure they all check out
@@ -571,7 +574,7 @@ func (hc *HeaderChain) SetHead(head uint64, updateFn UpdateHeadBlocksCallback, d
 		if parent == nil {
 			parent = hc.genesisHeader
 		}
-		parentHash = hdr.ParentHash
+		parentHash = parent.Hash()
 
 		// Notably, since gczz has the possibility for setting the head to a low
 		// height which is even lower than ancient head.

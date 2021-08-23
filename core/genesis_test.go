@@ -35,20 +35,24 @@ func TestDefaultGenesisBlock(t *testing.T) {
 	if block.Hash() != params.MainnetGenesisHash {
 		t.Errorf("wrong mainnet genesis hash, got %v, want %v", block.Hash(), params.MainnetGenesisHash)
 	}
+	block = DefaultRopstenGenesisBlock().ToBlock(nil)
+	if block.Hash() != params.RopstenGenesisHash {
+		t.Errorf("wrong ropsten genesis hash, got %v, want %v", block.Hash(), params.RopstenGenesisHash)
+	}
 }
 
 func TestSetupGenesis(t *testing.T) {
 	var (
 		customghash = common.HexToHash("0x89c99d90b79719238d2645c7642f2c9295246e80775b38cfd162b696817fbd50")
 		customg     = Genesis{
-			Config: &params.ChainConfig{},
+			Config: &params.ChainConfig{HomesteadBlock: big.NewInt(3)},
 			Alloc: GenesisAlloc{
 				{1}: {Balance: big.NewInt(1), Storage: map[common.Hash]common.Hash{{1}: {1}}},
 			},
 		}
 		oldcustomg = customg
 	)
-	oldcustomg.Config = &params.ChainConfig{}
+	oldcustomg.Config = &params.ChainConfig{HomesteadBlock: big.NewInt(2)}
 	tests := []struct {
 		name       string
 		fn         func(czzdb.Database) (*params.ChainConfig, common.Hash, error)
@@ -89,6 +93,16 @@ func TestSetupGenesis(t *testing.T) {
 			},
 			wantHash:   customghash,
 			wantConfig: customg.Config,
+		},
+		{
+			name: "custom block in DB, genesis == ropsten",
+			fn: func(db czzdb.Database) (*params.ChainConfig, common.Hash, error) {
+				customg.MustCommit(db)
+				return SetupGenesisBlock(db, DefaultRopstenGenesisBlock())
+			},
+			wantErr:    &GenesisMismatchError{Stored: customghash, New: params.RopstenGenesisHash},
+			wantHash:   params.RopstenGenesisHash,
+			wantConfig: params.RopstenChainConfig,
 		},
 		{
 			name: "compatible config in DB",
@@ -160,8 +174,20 @@ func TestGenesisHashes(t *testing.T) {
 			hash:    params.MainnetGenesisHash,
 		},
 		{
-			genesis: DefaultTestnetGenesisBlock(),
-			hash:    params.TestnetGenesisHash,
+			genesis: DefaultGoerliGenesisBlock(),
+			hash:    params.GoerliGenesisHash,
+		},
+		{
+			genesis: DefaultRopstenGenesisBlock(),
+			hash:    params.RopstenGenesisHash,
+		},
+		{
+			genesis: DefaultRinkebyGenesisBlock(),
+			hash:    params.RinkebyGenesisHash,
+		},
+		{
+			genesis: DefaultCalaverasGenesisBlock(),
+			hash:    params.CalaverasGenesisHash,
 		},
 	}
 	for i, c := range cases {
@@ -171,4 +197,3 @@ func TestGenesisHashes(t *testing.T) {
 		}
 	}
 }
-

@@ -90,7 +90,7 @@ func (f *fuzzer) fuzz() int {
 	// A parent header
 	header := &types.Header{}
 	if f.readBool() {
-		//header.UncleHash = types.EmptyUncleHash
+		header.UncleHash = types.EmptyUncleHash
 	}
 	// Difficulty can range between 0x2000 (2 bytes) and up to 32 bytes
 	{
@@ -131,6 +131,7 @@ func (f *fuzzer) fuzz() int {
 		u256Fn calculator
 	}{
 		{ethash.FrontierDifficultyCalulator, ethash.CalcDifficultyFrontierU256},
+		{ethash.HomesteadDifficultyCalulator, ethash.CalcDifficultyHomesteadU256},
 		{ethash.DynamicDifficultyCalculator(bombDelay), ethash.MakeDifficultyCalculatorU256(bombDelay)},
 	} {
 		want := pair.bigFn(time, header)

@@ -42,7 +42,7 @@ import (
 type LesApiBackend struct {
 	extRPCEnabled       bool
 	allowUnprotectedTxs bool
-	czz                 *LightClasszz
+	czz                 *lightClasszz
 	gpo                 *gasprice.Oracle
 }
 
@@ -60,7 +60,13 @@ func (b *LesApiBackend) SetHead(number uint64) {
 }
 
 func (b *LesApiBackend) HeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*types.Header, error) {
-	if number == rpc.LatestBlockNumber || number == rpc.PendingBlockNumber {
+	// Return the latest current as the pending one since there
+	// is no pending notion in the light client. TODO(rjl493456442)
+	// unify the behavior of `HeaderByNumber` and `PendingBlockAndReceipts`.
+	if number == rpc.PendingBlockNumber {
+		return b.czz.blockchain.CurrentHeader(), nil
+	}
+	if number == rpc.LatestBlockNumber {
 		return b.czz.blockchain.CurrentHeader(), nil
 	}
 	return b.czz.blockchain.GetHeaderByNumberOdr(ctx, uint64(number))
@@ -120,6 +126,10 @@ func (b *LesApiBackend) BlockByNumberOrHash(ctx context.Context, blockNrOrHash r
 		return block, nil
 	}
 	return nil, errors.New("invalid arguments; neither block nor hash specified")
+}
+
+func (b *LesApiBackend) PendingBlockAndReceipts() (*types.Block, types.Receipts) {
+	return nil, nil
 }
 
 func (b *LesApiBackend) StateAndHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
@@ -212,6 +222,10 @@ func (b *LesApiBackend) TxPoolContent() (map[common.Address]types.Transactions, 
 	return b.czz.txPool.Content()
 }
 
+func (b *LesApiBackend) TxPoolContentFrom(addr common.Address) (types.Transactions, types.Transactions) {
+	return b.czz.txPool.ContentFrom(addr)
+}
+
 func (b *LesApiBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.Subscription {
 	return b.czz.txPool.SubscribeNewTxsEvent(ch)
 }
@@ -251,8 +265,12 @@ func (b *LesApiBackend) ProtocolVersion() int {
 	return b.czz.LesVersion() + 10000
 }
 
-func (b *LesApiBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return b.gpo.SuggestPrice(ctx)
+func (b *LesApiBackend) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return b.gpo.SuggestTipCap(ctx)
+}
+
+func (b *LesApiBackend) FeeHistory(ctx context.Context, blockCount int, lastBlock rpc.BlockNumber, rewardPercentiles []float64) (firstBlock *big.Int, reward [][]*big.Int, baseFee []*big.Int, gasUsedRatio []float64, err error) {
+	return b.gpo.FeeHistory(ctx, blockCount, lastBlock, rewardPercentiles)
 }
 
 func (b *LesApiBackend) ChainDb() czzdb.Database {

@@ -57,7 +57,11 @@ var customGenesisTests = []struct {
 			"mixhash"    : "0x0000000000000000000000000000000000000000000000000000000000000000",
 			"parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
 			"timestamp"  : "0x00",
-			"config"     : {}
+			"config"     : {
+				"homesteadBlock" : 42,
+				"daoForkBlock"   : 141,
+				"daoForkSupport" : true
+			}
 		}`,
 		query:  "czz.getBlock(0).nonce",
 		result: "0x0000000000001339",
@@ -77,10 +81,10 @@ func TestCustomGenesis(t *testing.T) {
 		if err := ioutil.WriteFile(json, []byte(tt.genesis), 0600); err != nil {
 			t.Fatalf("test %d: failed to write genesis file: %v", i, err)
 		}
-		runGeth(t, "--datadir", datadir, "init", json).WaitExit()
+		runGczz(t, "--datadir", datadir, "init", json).WaitExit()
 
 		// Query the custom genesis block
-		gczz := runGeth(t, "--networkid", "1337", "--syncmode=full",
+		gczz := runGczz(t, "--networkid", "1337", "--syncmode=full", "--cache", "16",
 			"--datadir", datadir, "--maxpeers", "0", "--port", "0",
 			"--nodiscover", "--nat", "none", "--ipcdisable",
 			"--exec", tt.query, "console")

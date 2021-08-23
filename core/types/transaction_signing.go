@@ -39,7 +39,18 @@ type sigCache struct {
 // MakeSigner returns a Signer based on the given chain config and block number.
 func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 	var signer Signer
-	signer = NewLondonSigner(config.ChainID)
+	switch {
+	case config.IsLondon(blockNumber):
+		signer = NewLondonSigner(config.ChainID)
+	case config.IsBerlin(blockNumber):
+		signer = NewEIP2930Signer(config.ChainID)
+	case config.IsEIP155(blockNumber):
+		signer = NewEIP155Signer(config.ChainID)
+	case config.IsHomestead(blockNumber):
+		signer = HomesteadSigner{}
+	default:
+		signer = FrontierSigner{}
+	}
 	return signer
 }
 
@@ -52,7 +63,15 @@ func MakeSigner(config *params.ChainConfig, blockNumber *big.Int) Signer {
 // have the current block number available, use MakeSigner instead.
 func LatestSigner(config *params.ChainConfig) Signer {
 	if config.ChainID != nil {
-		return NewLondonSigner(config.ChainID)
+		if config.LondonBlock != nil {
+			return NewLondonSigner(config.ChainID)
+		}
+		if config.BerlinBlock != nil {
+			return NewEIP2930Signer(config.ChainID)
+		}
+		if config.EIP155Block != nil {
+			return NewEIP155Signer(config.ChainID)
+		}
 	}
 	return HomesteadSigner{}
 }
@@ -244,8 +263,8 @@ func (s eip2930Signer) Sender(tx *Transaction) (common.Address, error) {
 		V = new(big.Int).Sub(V, s.chainIdMul)
 		V.Sub(V, big8)
 	case AccessListTxType:
-		// ACL txs are defined to use 0 and 1 as their recovery id, add
-		// 27 to become equivalent to unprotected Homestead signatures.
+		// AL txs are defined to use 0 and 1 as their recovery
+		// id, add 27 to become equivalent to unprotected Homestead signatures.
 		V = new(big.Int).Add(V, big.NewInt(27))
 	default:
 		return common.Address{}, ErrTxTypeNotSupported

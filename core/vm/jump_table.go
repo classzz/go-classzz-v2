@@ -57,10 +57,20 @@ var (
 	constantinopleInstructionSet   = newConstantinopleInstructionSet()
 	istanbulInstructionSet         = newIstanbulInstructionSet()
 	berlinInstructionSet           = newBerlinInstructionSet()
+	londonInstructionSet           = newLondonInstructionSet()
 )
 
 // JumpTable contains the EVM opcodes supported at a given fork.
 type JumpTable [256]*operation
+
+// newLondonInstructionSet returns the frontier, homestead, byzantium,
+// contantinople, istanbul, petersburg, berlin and london instructions.
+func newLondonInstructionSet() JumpTable {
+	instructionSet := newBerlinInstructionSet()
+	enable3529(&instructionSet) // EIP-3529: Reduction in refunds https://eips.classzz.org/EIPS/eip-3529
+	enable3198(&instructionSet) // Base fee opcode https://eips.classzz.org/EIPS/eip-3198
+	return instructionSet
+}
 
 // newBerlinInstructionSet returns the frontier, homestead, byzantium,
 // contantinople, istanbul, petersburg and berlin instructions.
@@ -129,7 +139,7 @@ func newByzantiumInstructionSet() JumpTable {
 	instructionSet := newSpuriousDragonInstructionSet()
 	instructionSet[STATICCALL] = &operation{
 		execute:     opStaticCall,
-		constantGas: params.CallGas150,
+		constantGas: params.CallGasEIP150,
 		dynamicGas:  gasStaticCall,
 		minStack:    minStack(6, 1),
 		maxStack:    maxStack(6, 1),
@@ -173,13 +183,13 @@ func newSpuriousDragonInstructionSet() JumpTable {
 // EIP 150 a.k.a Tangerine Whistle
 func newTangerineWhistleInstructionSet() JumpTable {
 	instructionSet := newHomesteadInstructionSet()
-	instructionSet[BALANCE].constantGas = params.BalanceGas150
-	instructionSet[EXTCODESIZE].constantGas = params.ExtcodeSizeGas150
-	instructionSet[SLOAD].constantGas = params.SloadGas150
-	instructionSet[EXTCODECOPY].constantGas = params.ExtcodeCopyBase150
-	instructionSet[CALL].constantGas = params.CallGas150
-	instructionSet[CALLCODE].constantGas = params.CallGas150
-	instructionSet[DELEGATECALL].constantGas = params.CallGas150
+	instructionSet[BALANCE].constantGas = params.BalanceGasEIP150
+	instructionSet[EXTCODESIZE].constantGas = params.ExtcodeSizeGasEIP150
+	instructionSet[SLOAD].constantGas = params.SloadGasEIP150
+	instructionSet[EXTCODECOPY].constantGas = params.ExtcodeCopyBaseEIP150
+	instructionSet[CALL].constantGas = params.CallGasEIP150
+	instructionSet[CALLCODE].constantGas = params.CallGasEIP150
+	instructionSet[DELEGATECALL].constantGas = params.CallGasEIP150
 	return instructionSet
 }
 

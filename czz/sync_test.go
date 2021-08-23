@@ -22,14 +22,14 @@ import (
 	"time"
 
 	"github.com/classzz/go-classzz-v2/czz/downloader"
-	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
+	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
 	"github.com/classzz/go-classzz-v2/p2p"
 	"github.com/classzz/go-classzz-v2/p2p/enode"
 )
 
 // Tests that fast sync is disabled after a successful sync cycle.
-func TestFastSyncDisabling65(t *testing.T) { testFastSyncDisabling(t, czz.ETH65) }
-func TestFastSyncDisabling66(t *testing.T) { testFastSyncDisabling(t, czz.ETH66) }
+func TestFastSyncDisabling65(t *testing.T) { testFastSyncDisabling(t, eth.ETH65) }
+func TestFastSyncDisabling66(t *testing.T) { testFastSyncDisabling(t, eth.ETH66) }
 
 // Tests that fast sync gets disabled as soon as a real block is successfully
 // imported into the blockchain.
@@ -55,16 +55,16 @@ func testFastSyncDisabling(t *testing.T, protocol uint) {
 	defer emptyPipe.Close()
 	defer fullPipe.Close()
 
-	emptyPeer := czz.NewPeer(protocol, p2p.NewPeer(enode.ID{1}, "", nil), emptyPipe, empty.txpool)
-	fullPeer := czz.NewPeer(protocol, p2p.NewPeer(enode.ID{2}, "", nil), fullPipe, full.txpool)
+	emptyPeer := eth.NewPeer(protocol, p2p.NewPeer(enode.ID{1}, "", nil), emptyPipe, empty.txpool)
+	fullPeer := eth.NewPeer(protocol, p2p.NewPeer(enode.ID{2}, "", nil), fullPipe, full.txpool)
 	defer emptyPeer.Close()
 	defer fullPeer.Close()
 
-	go empty.handler.runEthPeer(emptyPeer, func(peer *czz.Peer) error {
-		return czz.Handle((*ethHandler)(empty.handler), peer)
+	go empty.handler.runEthPeer(emptyPeer, func(peer *eth.Peer) error {
+		return eth.Handle((*ethHandler)(empty.handler), peer)
 	})
-	go full.handler.runEthPeer(fullPeer, func(peer *czz.Peer) error {
-		return czz.Handle((*ethHandler)(full.handler), peer)
+	go full.handler.runEthPeer(fullPeer, func(peer *eth.Peer) error {
+		return eth.Handle((*ethHandler)(full.handler), peer)
 	})
 	// Wait a bit for the above handlers to start
 	time.Sleep(250 * time.Millisecond)

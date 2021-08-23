@@ -18,7 +18,6 @@ package czz
 
 import (
 	"errors"
-	"github.com/classzz/go-classzz-v2/consensus"
 	"math"
 	"math/big"
 	"sync"
@@ -31,7 +30,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
 	"github.com/classzz/go-classzz-v2/czz/fetcher"
-	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
+	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/event"
@@ -67,7 +66,7 @@ type txPool interface {
 
 	// Pending should return pending transactions.
 	// The slice should be modifiable by the caller.
-	Pending() (map[common.Address]types.Transactions, error)
+	Pending(enforceTips bool) (map[common.Address]types.Transactions, error)
 
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
@@ -189,9 +188,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 
 	// Construct the fetcher (short sync)
 	validator := func(header *types.Header) error {
-		amount, _ := h.chain.GetCurrentStakingByUser(header.Coinbase)
-		factor := consensus.MakeFactorForMine(amount)
-		return h.chain.Engine().VerifyHeader(h.chain, header, true, factor)
+		return h.chain.Engine().VerifyHeader(h.chain, header, true)
 	}
 	heighter := func() uint64 {
 		return h.chain.CurrentBlock().NumberU64()
@@ -238,7 +235,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 
 // runEthPeer registers an czz peer into the joint czz/snap peerset, adds it to
 // various subsistems and starts handling messages.
-func (h *handler) runEthPeer(peer *czz.Peer, handler czz.Handler) error {
+func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
 	// If the peer has a `snap` extension, wait for it to connect so we can have
 	// a uniform initialization/teardown mechanism
 	snap, err := h.peers.waitSnapExtension(peer)
@@ -290,7 +287,7 @@ func (h *handler) runEthPeer(peer *czz.Peer, handler czz.Handler) error {
 		peer.Log().Error("Classzz peer registration failed", "err", err)
 		return err
 	}
-	defer h.removePeer(peer.ID())
+	defer h.unregisterPeer(peer.ID())
 
 	p := h.peers.peer(peer.ID())
 	if p == nil {
@@ -357,9 +354,16 @@ func (h *handler) runSnapExtension(peer *snap.Peer, handler snap.Handler) error 
 	return handler(peer)
 }
 
-// removePeer unregisters a peer from the downloader and fetchers, removes it from
-// the set of tracked peers and closes the network connection to it.
+// removePeer requests disconnection of a peer.
 func (h *handler) removePeer(id string) {
+	peer := h.peers.peer(id)
+	if peer != nil {
+		peer.Peer.Disconnect(p2p.DiscUselessPeer)
+	}
+}
+
+// unregisterPeer removes a peer from the downloader, fetchers and main peer set.
+func (h *handler) unregisterPeer(id string) {
 	// Create a custom logger to avoid printing the entire id
 	var logger log.Logger
 	if len(id) < 16 {
@@ -387,8 +391,6 @@ func (h *handler) removePeer(id string) {
 	if err := h.peers.unregisterPeer(id); err != nil {
 		logger.Error("Classzz peer removal failed", "err", err)
 	}
-	// Hard disconnect at the networking layer
-	peer.Peer.Disconnect(p2p.DiscUselessPeer)
 }
 
 func (h *handler) Start(maxPeers int) {
@@ -474,8 +476,8 @@ func (h *handler) BroadcastTransactions(txs types.Transactions) {
 		directCount int // Count of the txs sent directly to peers
 		directPeers int // Count of the peers that were sent transactions directly
 
-		txset = make(map[*ethPeer][]common.Hash) // Set peer->hash to transfer directly
-		annos = make(map[*ethPeer][]common.Hash) // Set peer->hash to announce
+		txset = make(map[*czzPeer][]common.Hash) // Set peer->hash to transfer directly
+		annos = make(map[*czzPeer][]common.Hash) // Set peer->hash to announce
 
 	)
 	// Broadcast transactions to a batch of peers not knowing about it

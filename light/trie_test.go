@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/classzz/go-classzz-v2/consensus/ethash"
@@ -36,7 +37,10 @@ func TestNodeIterator(t *testing.T) {
 	var (
 		fulldb  = rawdb.NewMemoryDatabase()
 		lightdb = rawdb.NewMemoryDatabase()
-		gspec   = core.Genesis{Alloc: core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}}}
+		gspec   = core.Genesis{
+			Alloc:   core.GenesisAlloc{testBankAddress: {Balance: testBankFunds}},
+			BaseFee: big.NewInt(params.InitialBaseFee),
+		}
 		genesis = gspec.MustCommit(fulldb)
 	)
 	gspec.MustCommit(lightdb)

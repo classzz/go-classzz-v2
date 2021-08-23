@@ -41,21 +41,27 @@ import (
 
 // FullNodeGPO contains default gasprice oracle settings for full node.
 var FullNodeGPO = gasprice.Config{
-	Blocks:     20,
-	Percentile: 60,
-	MaxPrice:   gasprice.DefaultMaxPrice,
+	Blocks:           20,
+	Percentile:       60,
+	MaxHeaderHistory: 0,
+	MaxBlockHistory:  0,
+	MaxPrice:         gasprice.DefaultMaxPrice,
+	IgnorePrice:      gasprice.DefaultIgnorePrice,
 }
 
 // LightClientGPO contains default gasprice oracle settings for light client.
 var LightClientGPO = gasprice.Config{
-	Blocks:     2,
-	Percentile: 60,
-	MaxPrice:   gasprice.DefaultMaxPrice,
+	Blocks:           2,
+	Percentile:       60,
+	MaxHeaderHistory: 300,
+	MaxBlockHistory:  5,
+	MaxPrice:         gasprice.DefaultMaxPrice,
+	IgnorePrice:      gasprice.DefaultIgnorePrice,
 }
 
 // Defaults contains default settings for use on the Classzz main net.
 var Defaults = Config{
-	SyncMode: downloader.FastSync,
+	SyncMode: downloader.SnapSync,
 	Ethash: ethash.Config{
 		CacheDir:         "ethash",
 		CachesInMem:      2,
@@ -77,15 +83,14 @@ var Defaults = Config{
 	TrieTimeout:             60 * time.Minute,
 	SnapshotCache:           102,
 	Miner: miner.Config{
-		GasFloor: 8000000,
 		GasCeil:  8000000,
 		GasPrice: big.NewInt(params.GWei),
 		Recommit: 3 * time.Second,
 	},
 	TxPool:      core.DefaultTxPoolConfig,
-	RPCGasCap:   25000000,
+	RPCGasCap:   50000000,
 	GPO:         FullNodeGPO,
-	RPCTxFeeCap: 1, // 1 czz
+	RPCTxFeeCap: 1, // 1 ether
 }
 
 func init() {
@@ -162,11 +167,6 @@ type Config struct {
 	SnapshotCache           int
 	Preimages               bool
 
-	EthClient  []string `toml:",omitempty"`
-	HecoClient []string `toml:",omitempty"`
-	BscClient  []string `toml:",omitempty"`
-	OkexClient []string `toml:",omitempty"`
-
 	// Mining options
 	Miner miner.Config
 
@@ -185,17 +185,11 @@ type Config struct {
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
 
-	// Type of the EWASM interpreter ("" for default)
-	EWASMInterpreter string
-
-	// Type of the EVM interpreter ("" for default)
-	EVMInterpreter string
-
 	// RPCGasCap is the global gas cap for czz-call variants.
 	RPCGasCap uint64
 
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
-	// send-transction variants. The unit is czz.
+	// send-transction variants. The unit is ether.
 	RPCTxFeeCap float64
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.
@@ -203,6 +197,9 @@ type Config struct {
 
 	// CheckpointOracle is the configuration for checkpoint oracle.
 	CheckpointOracle *params.CheckpointOracleConfig `toml:",omitempty"`
+
+	// Berlin block override (TODO: remove after the fork)
+	OverrideLondon *big.Int `toml:",omitempty"`
 }
 
 // CreateConsensusEngine creates a consensus engine for the given chain configuration.

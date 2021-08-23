@@ -17,8 +17,6 @@
 package core
 
 import (
-	"github.com/classzz/go-classzz-v2/consensus"
-	"math/big"
 	"runtime"
 	"testing"
 	"time"
@@ -50,14 +48,13 @@ func TestHeaderVerification(t *testing.T) {
 	for i := 0; i < len(blocks); i++ {
 		for j, valid := range []bool{true, false} {
 			var results <-chan error
-			amount,_ := chain.GetCurrentStakingByUser(headers[i].Coinbase)
-			factor := consensus.MakeFactorForMine(amount)
+
 			if valid {
 				engine := ethash.NewFaker()
-				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true},[]*big.Int{factor})
+				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true})
 			} else {
 				engine := ethash.NewFakeFailer(headers[i].Number.Uint64())
-				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true},[]*big.Int{factor})
+				_, results = engine.VerifyHeaders(chain, []*types.Header{headers[i]}, []bool{true})
 			}
 			// Wait for the verification result
 			select {
@@ -94,7 +91,6 @@ func testHeaderConcurrentVerification(t *testing.T, threads int) {
 	)
 	headers := make([]*types.Header, len(blocks))
 	seals := make([]bool, len(blocks))
-	factors := make([]*big.Int, len(blocks))
 
 	for i, block := range blocks {
 		headers[i] = block.Header()
@@ -111,11 +107,11 @@ func testHeaderConcurrentVerification(t *testing.T, threads int) {
 
 		if valid {
 			chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFaker(), vm.Config{}, nil, nil)
-			_, results = chain.engine.VerifyHeaders(chain, headers, seals,factors)
+			_, results = chain.engine.VerifyHeaders(chain, headers, seals)
 			chain.Stop()
 		} else {
 			chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFakeFailer(uint64(len(headers)-1)), vm.Config{}, nil, nil)
-			_, results = chain.engine.VerifyHeaders(chain, headers, seals,factors)
+			_, results = chain.engine.VerifyHeaders(chain, headers, seals)
 			chain.Stop()
 		}
 		// Wait for all the verification results
@@ -167,7 +163,6 @@ func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	)
 	headers := make([]*types.Header, len(blocks))
 	seals := make([]bool, len(blocks))
-	factors := make([]*big.Int, len(blocks))
 
 	for i, block := range blocks {
 		headers[i] = block.Header()
@@ -181,7 +176,7 @@ func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	chain, _ := NewBlockChain(testdb, nil, params.TestChainConfig, ethash.NewFakeDelayer(time.Millisecond), vm.Config{}, nil, nil)
 	defer chain.Stop()
 
-	abort, results := chain.engine.VerifyHeaders(chain, headers, seals,factors)
+	abort, results := chain.engine.VerifyHeaders(chain, headers, seals)
 	close(abort)
 
 	// Deplete the results channel
@@ -200,5 +195,37 @@ func testHeaderConcurrentAbortion(t *testing.T, threads int) {
 	// Check that abortion was honored by not processing too many POWs
 	if verified > 2*threads {
 		t.Errorf("verification count too large: have %d, want below %d", verified, 2*threads)
+	}
+}
+
+func TestCalcGasLimit(t *testing.T) {
+	for i, tc := range []struct {
+		pGasLimit uint64
+		max       uint64
+		min       uint64
+	}{
+		{20000000, 20019530, 19980470},
+		{40000000, 40039061, 39960939},
+	} {
+		// Increase
+		if have, want := CalcGasLimit(tc.pGasLimit, 2*tc.pGasLimit), tc.max; have != want {
+			t.Errorf("test %d: have %d want <%d", i, have, want)
+		}
+		// Decrease
+		if have, want := CalcGasLimit(tc.pGasLimit, 0), tc.min; have != want {
+			t.Errorf("test %d: have %d want >%d", i, have, want)
+		}
+		// Small decrease
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit-1), tc.pGasLimit-1; have != want {
+			t.Errorf("test %d: have %d want %d", i, have, want)
+		}
+		// Small increase
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit+1), tc.pGasLimit+1; have != want {
+			t.Errorf("test %d: have %d want %d", i, have, want)
+		}
+		// No change
+		if have, want := CalcGasLimit(tc.pGasLimit, tc.pGasLimit), tc.pGasLimit; have != want {
+			t.Errorf("test %d: have %d want %d", i, have, want)
+		}
 	}
 }

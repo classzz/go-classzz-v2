@@ -24,99 +24,83 @@ import (
 	"github.com/classzz/go-classzz-v2/params"
 )
 
-const (
-	ColdAccountAccessCost2929 = uint64(2600) // COLD_ACCOUNT_ACCESS_COST
-	ColdSloadCostEIP2929      = uint64(2100) // COLD_SLOAD_COST
-	WarmStorageReadCost2929   = uint64(100)  // WARM_STORAGE_READ_COST
-)
-
-// gasSStore2929 implements gas cost for SSTORE according to EIP-2929
-//
-// When calling SSTORE, check if the (address, storage_key) pair is in accessed_storage_keys.
-// If it is not, charge an additional COLD_SLOAD_COST gas, and add the pair to accessed_storage_keys.
-// Additionally, modify the parameters defined in EIP 2200 as follows:
-//
-// Parameter 	Old value 	New value
-// SLOAD_GAS 	800 	= WARM_STORAGE_READ_COST
-// SSTORE_RESET_GAS 	5000 	5000 - COLD_SLOAD_COST
-//
-//The other parameters defined in EIP 2200 are unchanged.
-// see gasSStore2200(...) in core/vm/gas_table.go for more info about how EIP 2200 is specified
-func gasSStore2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
-	// If we fail the minimum gas availability invariant, fail (0)
-	if contract.Gas <= params.SstoreSentryGas2200 {
-		return 0, errors.New("not enough gas for reentrancy sentry")
-	}
-	// Gas sentry honoured, do the actual gas calculation based on the stored value
-	var (
-		y, x    = stack.Back(1), stack.peek()
-		slot    = common.Hash(x.Bytes32())
-		current = evm.StateDB.GetState(contract.Address(), slot)
-		cost    = uint64(0)
-	)
-	// Check slot presence in the access list
-	if addrPresent, slotPresent := evm.StateDB.SlotInAccessList(contract.Address(), slot); !slotPresent {
-		cost = ColdSloadCostEIP2929
-		// If the caller cannot afford the cost, this change will be rolled back
-		evm.StateDB.AddSlotToAccessList(contract.Address(), slot)
-		if !addrPresent {
-			// Once we're done with YOLOv2 and schedule this for mainnet, might
-			// be good to remove this panic here, which is just really a
-			// canary to have during testing
-			panic("impossible case: address was not present in access list during sstore op")
+func makeGasSStoreFunc(clearingRefund uint64) gasFunc {
+	return func(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+		// If we fail the minimum gas availability invariant, fail (0)
+		if contract.Gas <= params.SstoreSentryGasEIP2200 {
+			return 0, errors.New("not enough gas for reentrancy sentry")
 		}
-	}
-	value := common.Hash(y.Bytes32())
-
-	if current == value { // noop (1)
-		// EIP 2200 original clause:
-		//		return params.SloadGas2200, nil
-		return cost + WarmStorageReadCost2929, nil // SLOAD_GAS
-	}
-	original := evm.StateDB.GetCommittedState(contract.Address(), x.Bytes32())
-	if original == current {
-		if original == (common.Hash{}) { // create slot (2.1.1)
-			return cost + params.SstoreSetGas2200, nil
+		// Gas sentry honoured, do the actual gas calculation based on the stored value
+		var (
+			y, x    = stack.Back(1), stack.peek()
+			slot    = common.Hash(x.Bytes32())
+			current = evm.StateDB.GetState(contract.Address(), slot)
+			cost    = uint64(0)
+		)
+		// Check slot presence in the access list
+		if addrPresent, slotPresent := evm.StateDB.SlotInAccessList(contract.Address(), slot); !slotPresent {
+			cost = params.ColdSloadCostEIP2929
+			// If the caller cannot afford the cost, this change will be rolled back
+			evm.StateDB.AddSlotToAccessList(contract.Address(), slot)
+			if !addrPresent {
+				// Once we're done with YOLOv2 and schedule this for mainnet, might
+				// be good to remove this panic here, which is just really a
+				// canary to have during testing
+				panic("impossible case: address was not present in access list during sstore op")
+			}
 		}
-		if value == (common.Hash{}) { // delete slot (2.1.2b)
-			evm.StateDB.AddRefund(params.SstoreClearsScheduleRefund2200)
+		value := common.Hash(y.Bytes32())
+
+		if current == value { // noop (1)
+			// EIP 2200 original clause:
+			//		return params.SloadGasEIP2200, nil
+			return cost + params.WarmStorageReadCostEIP2929, nil // SLOAD_GAS
+		}
+		original := evm.StateDB.GetCommittedState(contract.Address(), x.Bytes32())
+		if original == current {
+			if original == (common.Hash{}) { // create slot (2.1.1)
+				return cost + params.SstoreSetGasEIP2200, nil
+			}
+			if value == (common.Hash{}) { // delete slot (2.1.2b)
+				evm.StateDB.AddRefund(clearingRefund)
+			}
+			// EIP-2200 original clause:
+			//		return params.SstoreResetGasEIP2200, nil // write existing slot (2.1.2)
+			return cost + (params.SstoreResetGasEIP2200 - params.ColdSloadCostEIP2929), nil // write existing slot (2.1.2)
+		}
+		if original != (common.Hash{}) {
+			if current == (common.Hash{}) { // recreate slot (2.2.1.1)
+				evm.StateDB.SubRefund(clearingRefund)
+			} else if value == (common.Hash{}) { // delete slot (2.2.1.2)
+				evm.StateDB.AddRefund(clearingRefund)
+			}
+		}
+		if original == value {
+			if original == (common.Hash{}) { // reset to original inexistent slot (2.2.2.1)
+				// EIP 2200 Original clause:
+				//evm.StateDB.AddRefund(params.SstoreSetGasEIP2200 - params.SloadGasEIP2200)
+				evm.StateDB.AddRefund(params.SstoreSetGasEIP2200 - params.WarmStorageReadCostEIP2929)
+			} else { // reset to original existing slot (2.2.2.2)
+				// EIP 2200 Original clause:
+				//	evm.StateDB.AddRefund(params.SstoreResetGasEIP2200 - params.SloadGasEIP2200)
+				// - SSTORE_RESET_GAS redefined as (5000 - COLD_SLOAD_COST)
+				// - SLOAD_GAS redefined as WARM_STORAGE_READ_COST
+				// Final: (5000 - COLD_SLOAD_COST) - WARM_STORAGE_READ_COST
+				evm.StateDB.AddRefund((params.SstoreResetGasEIP2200 - params.ColdSloadCostEIP2929) - params.WarmStorageReadCostEIP2929)
+			}
 		}
 		// EIP-2200 original clause:
-		//		return params.SstoreResetGas2200, nil // write existing slot (2.1.2)
-		return cost + (params.SstoreResetGas2200 - ColdSloadCostEIP2929), nil // write existing slot (2.1.2)
+		//return params.SloadGasEIP2200, nil // dirty update (2.2)
+		return cost + params.WarmStorageReadCostEIP2929, nil // dirty update (2.2)
 	}
-	if original != (common.Hash{}) {
-		if current == (common.Hash{}) { // recreate slot (2.2.1.1)
-			evm.StateDB.SubRefund(params.SstoreClearsScheduleRefund2200)
-		} else if value == (common.Hash{}) { // delete slot (2.2.1.2)
-			evm.StateDB.AddRefund(params.SstoreClearsScheduleRefund2200)
-		}
-	}
-	if original == value {
-		if original == (common.Hash{}) { // reset to original inexistent slot (2.2.2.1)
-			// EIP 2200 Original clause:
-			//evm.StateDB.AddRefund(params.SstoreSetGas2200 - params.SloadGas2200)
-			evm.StateDB.AddRefund(params.SstoreSetGas2200 - WarmStorageReadCost2929)
-		} else { // reset to original existing slot (2.2.2.2)
-			// EIP 2200 Original clause:
-			//	evm.StateDB.AddRefund(params.SstoreResetGas2200 - params.SloadGas2200)
-			// - SSTORE_RESET_GAS redefined as (5000 - COLD_SLOAD_COST)
-			// - SLOAD_GAS redefined as WARM_STORAGE_READ_COST
-			// Final: (5000 - COLD_SLOAD_COST) - WARM_STORAGE_READ_COST
-			evm.StateDB.AddRefund((params.SstoreResetGas2200 - ColdSloadCostEIP2929) - WarmStorageReadCost2929)
-		}
-	}
-	// EIP-2200 original clause:
-	//return params.SloadGas2200, nil // dirty update (2.2)
-	return cost + WarmStorageReadCost2929, nil // dirty update (2.2)
 }
 
-// gasSLoad2929 calculates dynamic gas for SLOAD according to EIP-2929
+// gasSLoadEIP2929 calculates dynamic gas for SLOAD according to EIP-2929
 // For SLOAD, if the (address, storage_key) pair (where address is the address of the contract
 // whose storage is being read) is not yet in accessed_storage_keys,
 // charge 2100 gas and add the pair to accessed_storage_keys.
 // If the pair is already in accessed_storage_keys, charge 100 gas.
-func gasSLoad2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+func gasSLoadEIP2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	loc := stack.peek()
 	slot := common.Hash(loc.Bytes32())
 	// Check slot presence in the access list
@@ -124,17 +108,17 @@ func gasSLoad2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memor
 		// If the caller cannot afford the cost, this change will be rolled back
 		// If he does afford it, we can skip checking the same thing later on, during execution
 		evm.StateDB.AddSlotToAccessList(contract.Address(), slot)
-		return ColdSloadCostEIP2929, nil
+		return params.ColdSloadCostEIP2929, nil
 	}
-	return WarmStorageReadCost2929, nil
+	return params.WarmStorageReadCostEIP2929, nil
 }
 
-// gasExtCodeCopy2929 implements extcodecopy according to EIP-2929
+// gasExtCodeCopyEIP2929 implements extcodecopy according to EIP-2929
 // EIP spec:
 // > If the target is not in accessed_addresses,
 // > charge COLD_ACCOUNT_ACCESS_COST gas, and add the address to accessed_addresses.
 // > Otherwise, charge WARM_STORAGE_READ_COST gas.
-func gasExtCodeCopy2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+func gasExtCodeCopyEIP2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	// memory expansion first (dynamic part of pre-2929 implementation)
 	gas, err := gasExtCodeCopy(evm, contract, stack, mem, memorySize)
 	if err != nil {
@@ -146,7 +130,7 @@ func gasExtCodeCopy2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory,
 		evm.StateDB.AddAddressToAccessList(addr)
 		var overflow bool
 		// We charge (cold-warm), since 'warm' is already charged as constantGas
-		if gas, overflow = math.SafeAdd(gas, ColdAccountAccessCost2929-WarmStorageReadCost2929); overflow {
+		if gas, overflow = math.SafeAdd(gas, params.ColdAccountAccessCostEIP2929-params.WarmStorageReadCostEIP2929); overflow {
 			return 0, ErrGasUintOverflow
 		}
 		return gas, nil
@@ -154,33 +138,33 @@ func gasExtCodeCopy2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory,
 	return gas, nil
 }
 
-// gas2929AccountCheck checks whether the first stack item (as address) is present in the access list.
+// gasEip2929AccountCheck checks whether the first stack item (as address) is present in the access list.
 // If it is, this method returns '0', otherwise 'cold-warm' gas, presuming that the opcode using it
 // is also using 'warm' as constant factor.
 // This method is used by:
 // - extcodehash,
 // - extcodesize,
 // - (ext) balance
-func gas2929AccountCheck(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+func gasEip2929AccountCheck(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 	addr := common.Address(stack.peek().Bytes20())
 	// Check slot presence in the access list
 	if !evm.StateDB.AddressInAccessList(addr) {
 		// If the caller cannot afford the cost, this change will be rolled back
 		evm.StateDB.AddAddressToAccessList(addr)
 		// The warm storage read cost is already charged as constantGas
-		return ColdAccountAccessCost2929 - WarmStorageReadCost2929, nil
+		return params.ColdAccountAccessCostEIP2929 - params.WarmStorageReadCostEIP2929, nil
 	}
 	return 0, nil
 }
 
-func makeCallVariantGasCall2929(oldCalculator gasFunc) gasFunc {
+func makeCallVariantGasCallEIP2929(oldCalculator gasFunc) gasFunc {
 	return func(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
 		addr := common.Address(stack.Back(1).Bytes20())
 		// Check slot presence in the access list
 		warmAccess := evm.StateDB.AddressInAccessList(addr)
-		// The WarmStorageReadCost2929 (100) is already deducted in the form of a constant cost, so
+		// The WarmStorageReadCostEIP2929 (100) is already deducted in the form of a constant cost, so
 		// the cost to charge for cold access, if any, is Cold - Warm
-		coldCost := ColdAccountAccessCost2929 - WarmStorageReadCost2929
+		coldCost := params.ColdAccountAccessCostEIP2929 - params.WarmStorageReadCostEIP2929
 		if !warmAccess {
 			evm.StateDB.AddAddressToAccessList(addr)
 			// Charge the remaining difference here already, to correctly calculate available
@@ -208,29 +192,53 @@ func makeCallVariantGasCall2929(oldCalculator gasFunc) gasFunc {
 }
 
 var (
-	gasCall2929         = makeCallVariantGasCall2929(gasCall)
-	gasDelegateCall2929 = makeCallVariantGasCall2929(gasDelegateCall)
-	gasStaticCall2929   = makeCallVariantGasCall2929(gasStaticCall)
-	gasCallCode2929     = makeCallVariantGasCall2929(gasCallCode)
+	gasCallEIP2929         = makeCallVariantGasCallEIP2929(gasCall)
+	gasDelegateCallEIP2929 = makeCallVariantGasCallEIP2929(gasDelegateCall)
+	gasStaticCallEIP2929   = makeCallVariantGasCallEIP2929(gasStaticCall)
+	gasCallCodeEIP2929     = makeCallVariantGasCallEIP2929(gasCallCode)
+	gasSelfdestructEIP2929 = makeSelfdestructGasFn(true)
+	// gasSelfdestructEIP3529 implements the changes in EIP-2539 (no refunds)
+	gasSelfdestructEIP3529 = makeSelfdestructGasFn(false)
+
+	// gasSStoreEIP2929 implements gas cost for SSTORE according to EIP-2929
+	//
+	// When calling SSTORE, check if the (address, storage_key) pair is in accessed_storage_keys.
+	// If it is not, charge an additional COLD_SLOAD_COST gas, and add the pair to accessed_storage_keys.
+	// Additionally, modify the parameters defined in EIP 2200 as follows:
+	//
+	// Parameter 	Old value 	New value
+	// SLOAD_GAS 	800 	= WARM_STORAGE_READ_COST
+	// SSTORE_RESET_GAS 	5000 	5000 - COLD_SLOAD_COST
+	//
+	//The other parameters defined in EIP 2200 are unchanged.
+	// see gasSStoreEIP2200(...) in core/vm/gas_table.go for more info about how EIP 2200 is specified
+	gasSStoreEIP2929 = makeGasSStoreFunc(params.SstoreClearsScheduleRefundEIP2200)
+
+	// gasSStoreEIP2539 implements gas cost for SSTORE according to EPI-2539
+	// Replace `SSTORE_CLEARS_SCHEDULE` with `SSTORE_RESET_GAS + ACCESS_LIST_STORAGE_KEY_COST` (4,800)
+	gasSStoreEIP3529 = makeGasSStoreFunc(params.SstoreClearsScheduleRefundEIP3529)
 )
 
-func gasSelfdestruct2929(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
-	var (
-		gas     uint64
-		address = common.Address(stack.peek().Bytes20())
-	)
-	if !evm.StateDB.AddressInAccessList(address) {
-		// If the caller cannot afford the cost, this change will be rolled back
-		evm.StateDB.AddAddressToAccessList(address)
-		gas = ColdAccountAccessCost2929
+// makeSelfdestructGasFn can create the selfdestruct dynamic gas function for EIP-2929 and EIP-2539
+func makeSelfdestructGasFn(refundsEnabled bool) gasFunc {
+	gasFunc := func(evm *EVM, contract *Contract, stack *Stack, mem *Memory, memorySize uint64) (uint64, error) {
+		var (
+			gas     uint64
+			address = common.Address(stack.peek().Bytes20())
+		)
+		if !evm.StateDB.AddressInAccessList(address) {
+			// If the caller cannot afford the cost, this change will be rolled back
+			evm.StateDB.AddAddressToAccessList(address)
+			gas = params.ColdAccountAccessCostEIP2929
+		}
+		// if empty and transfers value
+		if evm.StateDB.Empty(address) && evm.StateDB.GetBalance(contract.Address()).Sign() != 0 {
+			gas += params.CreateBySelfdestructGas
+		}
+		if refundsEnabled && !evm.StateDB.HasSuicided(contract.Address()) {
+			evm.StateDB.AddRefund(params.SelfdestructRefundGas)
+		}
+		return gas, nil
 	}
-	// if empty and transfers value
-	if evm.StateDB.Empty(address) && evm.StateDB.GetBalance(contract.Address()).Sign() != 0 {
-		gas += params.CreateBySelfdestructGas
-	}
-	if !evm.StateDB.HasSuicided(contract.Address()) {
-		evm.StateDB.AddRefund(params.SelfdestructRefundGas)
-	}
-	return gas, nil
-
+	return gasFunc
 }

@@ -43,13 +43,13 @@ func tmpDatadirWithKeystore(t *testing.T) string {
 }
 
 func TestAccountListEmpty(t *testing.T) {
-	gczz := runGeth(t, "account", "list")
+	gczz := runGczz(t, "account", "list")
 	gczz.ExpectExit()
 }
 
 func TestAccountList(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
-	gczz := runGeth(t, "account", "list", "--datadir", datadir)
+	gczz := runGczz(t, "account", "list", "--datadir", datadir)
 	defer gczz.ExpectExit()
 	if runtime.GOOS == "windows" {
 		gczz.Expect(`
@@ -67,7 +67,7 @@ Account #2: {289d485d9771714cce91d3393d764e1311907acc} keystore://{{.Datadir}}/k
 }
 
 func TestAccountNew(t *testing.T) {
-	gczz := runGeth(t, "account", "new", "--lightkdf")
+	gczz := runGczz(t, "account", "new", "--lightkdf")
 	defer gczz.ExpectExit()
 	gczz.Expect(`
 Your new account is locked with a password. Please give a password. Do not forget this password.
@@ -120,13 +120,13 @@ func importAccountWithExpect(t *testing.T, key string, expected string) {
 	if err := ioutil.WriteFile(passwordFile, []byte("foobar"), 0600); err != nil {
 		t.Error(err)
 	}
-	gczz := runGeth(t, "account", "import", keyfile, "-password", passwordFile)
+	gczz := runGczz(t, "account", "import", keyfile, "-password", passwordFile)
 	defer gczz.ExpectExit()
 	gczz.Expect(expected)
 }
 
 func TestAccountNewBadRepeat(t *testing.T) {
-	gczz := runGeth(t, "account", "new", "--lightkdf")
+	gczz := runGczz(t, "account", "new", "--lightkdf")
 	defer gczz.ExpectExit()
 	gczz.Expect(`
 Your new account is locked with a password. Please give a password. Do not forget this password.
@@ -139,7 +139,7 @@ Fatal: Passwords do not match
 
 func TestAccountUpdate(t *testing.T) {
 	datadir := tmpDatadirWithKeystore(t)
-	gczz := runGeth(t, "account", "update",
+	gczz := runGczz(t, "account", "update",
 		"--datadir", datadir, "--lightkdf",
 		"f466859ead1932d743d622cb74fc058882e8648a")
 	defer gczz.ExpectExit()
@@ -154,7 +154,7 @@ Repeat password: {{.InputLine "foobar2"}}
 }
 
 func TestWalletImport(t *testing.T) {
-	gczz := runGeth(t, "wallet", "import", "--lightkdf", "testdata/guswallet.json")
+	gczz := runGczz(t, "wallet", "import", "--lightkdf", "testdata/guswallet.json")
 	defer gczz.ExpectExit()
 	gczz.Expect(`
 !! Unsupported terminal, password will be echoed.
@@ -169,7 +169,7 @@ Address: {d4584b5f6229b7be90727b0fc8c6b91bb427821f}
 }
 
 func TestWalletImportBadPassword(t *testing.T) {
-	gczz := runGeth(t, "wallet", "import", "--lightkdf", "testdata/guswallet.json")
+	gczz := runGczz(t, "wallet", "import", "--lightkdf", "testdata/guswallet.json")
 	defer gczz.ExpectExit()
 	gczz.Expect(`
 !! Unsupported terminal, password will be echoed.
@@ -179,7 +179,7 @@ Fatal: could not decrypt key with given password
 }
 
 func TestUnlockFlag(t *testing.T) {
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "js", "testdata/empty.js")
 	gczz.Expect(`
 Unlocking account f466859ead1932d743d622cb74fc058882e8648a | Attempt 1/3
@@ -200,7 +200,7 @@ Password: {{.InputLine "foobar"}}
 }
 
 func TestUnlockFlagWrongPassword(t *testing.T) {
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "js", "testdata/empty.js")
 
 	defer gczz.ExpectExit()
@@ -218,7 +218,7 @@ Fatal: Failed to unlock account f466859ead1932d743d622cb74fc058882e8648a (could 
 
 // https://github.com/classzz/go-classzz-v2/issues/1785
 func TestUnlockFlagMultiIndex(t *testing.T) {
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--unlock", "0,2", "js", "testdata/empty.js")
 
 	gczz.Expect(`
@@ -243,7 +243,7 @@ Password: {{.InputLine "foobar"}}
 }
 
 func TestUnlockFlagPasswordFile(t *testing.T) {
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--password", "testdata/passwords.txt", "--unlock", "0,2", "js", "testdata/empty.js")
 
 	gczz.ExpectExit()
@@ -261,7 +261,7 @@ func TestUnlockFlagPasswordFile(t *testing.T) {
 }
 
 func TestUnlockFlagPasswordFileWrongPassword(t *testing.T) {
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--password",
 		"testdata/wrong-passwords.txt", "--unlock", "0,2")
 	defer gczz.ExpectExit()
@@ -272,7 +272,7 @@ Fatal: Failed to unlock account 0 (could not decrypt key with given password)
 
 func TestUnlockFlagAmbiguous(t *testing.T) {
 	store := filepath.Join("..", "..", "accounts", "keystore", "testdata", "dupes")
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--keystore",
 		store, "--unlock", "f466859ead1932d743d622cb74fc058882e8648a",
 		"js", "testdata/empty.js")
@@ -310,7 +310,7 @@ In order to avoid this warning, you need to remove the following duplicate key f
 
 func TestUnlockFlagAmbiguousWrongPassword(t *testing.T) {
 	store := filepath.Join("..", "..", "accounts", "keystore", "testdata", "dupes")
-	gczz := runMinimalGeth(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
+	gczz := runMinimalGczz(t, "--port", "0", "--ipcdisable", "--datadir", tmpDatadirWithKeystore(t),
 		"--unlock", "f466859ead1932d743d622cb74fc058882e8648a", "--keystore",
 		store, "--unlock", "f466859ead1932d743d622cb74fc058882e8648a")
 

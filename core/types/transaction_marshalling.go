@@ -205,6 +205,7 @@ func (t *Transaction) UnmarshalJSON(input []byte) error {
 				return err
 			}
 		}
+
 	case DynamicFeeTxType:
 		var itx DynamicFeeTx
 		inner = &itx

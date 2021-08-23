@@ -545,7 +545,7 @@ func (f *BlockFetcher) loop() {
 						announce.time = task.time
 
 						// If the block is empty (header only), short circuit into the final import queue
-						if header.TxHash == types.EmptyRootHash {
+						if header.TxHash == types.EmptyRootHash && header.UncleHash == types.EmptyUncleHash {
 							log.Trace("Block empty, skipping body retrieval", "peer", announce.origin, "number", header.Number, "hash", header.Hash())
 
 							block := types.NewBlockWithHeader(header)
@@ -609,20 +609,20 @@ func (f *BlockFetcher) loop() {
 				for i := 0; i < len(task.transactions) && i < len(task.uncles); i++ {
 					// Match up a body to any possible completion request
 					var (
-						matched = false
-						//uncleHash common.Hash // calculated lazily and reused
-						txnHash common.Hash // calculated lazily and reused
+						matched   = false
+						uncleHash common.Hash // calculated lazily and reused
+						txnHash   common.Hash // calculated lazily and reused
 					)
 					for hash, announce := range f.completing {
 						if f.queued[hash] != nil || announce.origin != task.peer {
 							continue
 						}
-						//if uncleHash == (common.Hash{}) {
-						//	uncleHash = types.CalcUncleHash(task.uncles[i])
-						//}
-						//if uncleHash != announce.header.UncleHash {
-						//	continue
-						//}
+						if uncleHash == (common.Hash{}) {
+							uncleHash = types.CalcUncleHash(task.uncles[i])
+						}
+						if uncleHash != announce.header.UncleHash {
+							continue
+						}
 						if txnHash == (common.Hash{}) {
 							txnHash = types.DeriveSha(types.Transactions(task.transactions[i]), trie.NewStackTrie(nil))
 						}
@@ -632,7 +632,7 @@ func (f *BlockFetcher) loop() {
 						// Mark the body matched, reassemble if still unknown
 						matched = true
 						if f.getBlock(hash) == nil {
-							block := types.NewBlockWithHeader(announce.header).WithBody(task.transactions[i])
+							block := types.NewBlockWithHeader(announce.header).WithBody(task.transactions[i], task.uncles[i])
 							block.ReceivedAt = task.time
 							blocks = append(blocks, block)
 						} else {
@@ -833,15 +833,17 @@ func (f *BlockFetcher) importBlocks(peer string, block *types.Block) {
 // internal state.
 func (f *BlockFetcher) forgetHash(hash common.Hash) {
 	// Remove all pending announces and decrement DOS counters
-	for _, announce := range f.announced[hash] {
-		f.announces[announce.origin]--
-		if f.announces[announce.origin] <= 0 {
-			delete(f.announces, announce.origin)
+	if announceMap, ok := f.announced[hash]; ok {
+		for _, announce := range announceMap {
+			f.announces[announce.origin]--
+			if f.announces[announce.origin] <= 0 {
+				delete(f.announces, announce.origin)
+			}
 		}
-	}
-	delete(f.announced, hash)
-	if f.announceChangeHook != nil {
-		f.announceChangeHook(hash, false)
+		delete(f.announced, hash)
+		if f.announceChangeHook != nil {
+			f.announceChangeHook(hash, false)
+		}
 	}
 	// Remove any pending fetches and decrement the DOS counters
 	if announce := f.fetching[hash]; announce != nil {

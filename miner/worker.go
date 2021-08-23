@@ -17,6 +17,7 @@
 package miner
 
 import (
+	"bytes"
 	"errors"
 	"math/big"
 	"sync"
@@ -25,6 +26,7 @@ import (
 
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/consensus"
+	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"github.com/classzz/go-classzz-v2/core"
 	"github.com/classzz/go-classzz-v2/core/state"
 	"github.com/classzz/go-classzz-v2/core/types"
@@ -160,9 +162,10 @@ type worker struct {
 	pendingMu    sync.RWMutex
 	pendingTasks map[common.Hash]*task
 
-	snapshotMu    sync.RWMutex // The lock used to protect the block snapshot and state snapshot
-	snapshotBlock *types.Block
-	snapshotState *state.StateDB
+	snapshotMu       sync.RWMutex // The lock used to protect the snapshots below
+	snapshotBlock    *types.Block
+	snapshotReceipts types.Receipts
+	snapshotState    *state.StateDB
 
 	// atomic status counters
 	running int32 // The indicator whether the consensus engine is running or not.
@@ -241,6 +244,12 @@ func (w *worker) setEtherbase(addr common.Address) {
 	w.coinbase = addr
 }
 
+func (w *worker) setGasCeil(ceil uint64) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.config.GasCeil = ceil
+}
+
 // setExtra sets the content used to initialize the block extra field.
 func (w *worker) setExtra(extra []byte) {
 	w.mu.Lock()
@@ -280,6 +289,14 @@ func (w *worker) pendingBlock() *types.Block {
 	w.snapshotMu.RLock()
 	defer w.snapshotMu.RUnlock()
 	return w.snapshotBlock
+}
+
+// pendingBlockAndReceipts returns pending block and corresponding receipts.
+func (w *worker) pendingBlockAndReceipts() (*types.Block, types.Receipts) {
+	// return a snapshot to avoid contention on currentMu mutex
+	w.snapshotMu.RLock()
+	defer w.snapshotMu.RUnlock()
+	return w.snapshotBlock, w.snapshotReceipts
 }
 
 // start sets the running status as 1 and triggers new work submitting.
@@ -457,23 +474,23 @@ func (w *worker) mainLoop() {
 			if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
 				start := time.Now()
 				if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
-					//var uncles []*types.Header
-					//w.current.uncles.Each(func(item interface{}) bool {
-					//	hash, ok := item.(common.Hash)
-					//	if !ok {
-					//		return false
-					//	}
-					//	uncle, exist := w.localUncles[hash]
-					//	if !exist {
-					//		uncle, exist = w.remoteUncles[hash]
-					//	}
-					//	if !exist {
-					//		return false
-					//	}
-					//	uncles = append(uncles, uncle.Header())
-					//	return false
-					//})
-					w.commit(nil, true, start)
+					var uncles []*types.Header
+					w.current.uncles.Each(func(item interface{}) bool {
+						hash, ok := item.(common.Hash)
+						if !ok {
+							return false
+						}
+						uncle, exist := w.localUncles[hash]
+						if !exist {
+							uncle, exist = w.remoteUncles[hash]
+						}
+						if !exist {
+							return false
+						}
+						uncles = append(uncles, uncle.Header())
+						return false
+					})
+					w.commit(uncles, nil, true, start)
 				}
 			}
 
@@ -497,7 +514,7 @@ func (w *worker) mainLoop() {
 					acc, _ := types.Sender(w.current.signer, tx)
 					txs[acc] = append(txs[acc], tx)
 				}
-				txset := types.NewTransactionsByPriceAndNonce(w.current.signer, txs)
+				txset := types.NewTransactionsByPriceAndNonce(w.current.signer, txs, w.current.header.BaseFee)
 				tcount := w.current.tcount
 				w.commitTransactions(txset, coinbase, nil)
 				// Only update the snapshot if any new transactons were added
@@ -564,9 +581,8 @@ func (w *worker) taskLoop() {
 			w.pendingMu.Lock()
 			w.pendingTasks[sealHash] = task
 			w.pendingMu.Unlock()
-			amount, _ := w.chain.GetCurrentStakingByUser(task.block.Coinbase())
-			factor := consensus.MakeFactorForMine(amount)
-			if err := w.engine.Seal(w.chain, task.block, factor, w.resultCh, stopCh); err != nil {
+
+			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 			}
 		case <-w.exitCh:
@@ -662,9 +678,9 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 	}
 	// when 08 is processed ancestors contain 07 (quick block)
 	for _, ancestor := range w.chain.GetBlocksFromHash(parent.Hash(), 7) {
-		//for _, uncle := range ancestor.Uncles() {
-		//	env.family.Add(uncle.Hash())
-		//}
+		for _, uncle := range ancestor.Uncles() {
+			env.family.Add(uncle.Hash())
+		}
 		env.family.Add(ancestor.Hash())
 		env.ancestors.Add(ancestor.Hash())
 	}
@@ -725,9 +741,11 @@ func (w *worker) updateSnapshot() {
 	w.snapshotBlock = types.NewBlock(
 		w.current.header,
 		w.current.txs,
+		uncles,
 		w.current.receipts,
 		trie.NewStackTrie(nil),
 	)
+	w.snapshotReceipts = copyReceipts(w.current.receipts)
 	w.snapshotState = w.current.state.Copy()
 }
 
@@ -751,8 +769,9 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		return true
 	}
 
+	gasLimit := w.current.header.GasLimit
 	if w.current.gasPool == nil {
-		w.current.gasPool = new(core.GasPool).AddGas(w.current.header.GasLimit)
+		w.current.gasPool = new(core.GasPool).AddGas(gasLimit)
 	}
 
 	var coalescedLogs []*types.Log
@@ -767,7 +786,7 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		if interrupt != nil && atomic.LoadInt32(interrupt) != commitInterruptNone {
 			// Notify resubmit loop to increase resubmitting interval due to too frequent commits.
 			if atomic.LoadInt32(interrupt) == commitInterruptResubmit {
-				ratio := float64(w.current.header.GasLimit-w.current.gasPool.Gas()) / float64(w.current.header.GasLimit)
+				ratio := float64(gasLimit-w.current.gasPool.Gas()) / float64(gasLimit)
 				if ratio < 0.1 {
 					ratio = 0.1
 				}
@@ -793,8 +812,16 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		//
 		// We use the eip155 signer regardless of the current hf.
 		from, _ := types.Sender(w.current.signer, tx)
+		// Check whether the tx is replay protected. If we're not in the EIP155 hf
+		// phase, start ignoring the sender until we do.
+		if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
+			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
+
+			txs.Pop()
+			continue
+		}
 		// Start executing the transaction
-		w.current.state.Prepare(tx.Hash(), common.Hash{}, w.current.tcount)
+		w.current.state.Prepare(tx.Hash(), w.current.tcount)
 
 		logs, err := w.commitTransaction(tx, coinbase)
 		switch {
@@ -870,10 +897,17 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	header := &types.Header{
 		ParentHash: parent.Hash(),
 		Number:     num.Add(num, common.Big1),
-		GasLimit:   core.CalcGasLimit(parent, w.config.GasFloor, w.config.GasCeil),
+		GasLimit:   core.CalcGasLimit(parent.GasLimit(), w.config.GasCeil),
 		Extra:      w.extra,
 		Time:       uint64(timestamp),
-		//Extra:		[]byte{},
+	}
+	// Set baseFee and GasLimit if we are on an EIP-1559 chain
+	if w.chainConfig.IsLondon(header.Number) {
+		header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
+		if !w.chainConfig.IsLondon(parent.Number()) {
+			parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
+			header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
+		}
 	}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
@@ -887,6 +921,19 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		log.Error("Failed to prepare header for mining", "err", err)
 		return
 	}
+	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
+	if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
+		// Check whether the block is among the fork extra-override range
+		limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
+		if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
+			// Depending whether we support or oppose the fork, override differently
+			if w.chainConfig.DAOForkSupport {
+				header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
+			} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
+				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
+			}
+		}
+	}
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)
 	if err != nil {
@@ -894,40 +941,43 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		return
 	}
 	// Create the current work task and check any fork transitions needed
-	//env := w.current
+	env := w.current
+	if w.chainConfig.DAOForkSupport && w.chainConfig.DAOForkBlock != nil && w.chainConfig.DAOForkBlock.Cmp(header.Number) == 0 {
+		misc.ApplyDAOHardFork(env.state)
+	}
 	// Accumulate the uncles for the current block
-	//uncles := make([]*types.Header, 0, 2)
-	//commitUncles := func(blocks map[common.Hash]*types.Block) {
-	//	// Clean up stale uncle blocks first
-	//	for hash, uncle := range blocks {
-	//		if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
-	//			delete(blocks, hash)
-	//		}
-	//	}
-	//	for hash, uncle := range blocks {
-	//		if len(uncles) == 2 {
-	//			break
-	//		}
-	//		if err := w.commitUncle(env, uncle.Header()); err != nil {
-	//			log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
-	//		} else {
-	//			log.Debug("Committing new uncle to block", "hash", hash)
-	//			uncles = append(uncles, uncle.Header())
-	//		}
-	//	}
-	//}
+	uncles := make([]*types.Header, 0, 2)
+	commitUncles := func(blocks map[common.Hash]*types.Block) {
+		// Clean up stale uncle blocks first
+		for hash, uncle := range blocks {
+			if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
+				delete(blocks, hash)
+			}
+		}
+		for hash, uncle := range blocks {
+			if len(uncles) == 2 {
+				break
+			}
+			if err := w.commitUncle(env, uncle.Header()); err != nil {
+				log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
+			} else {
+				log.Debug("Committing new uncle to block", "hash", hash)
+				uncles = append(uncles, uncle.Header())
+			}
+		}
+	}
 	// Prefer to locally generated uncle
-	//commitUncles(w.localUncles)
-	//commitUncles(w.remoteUncles)
+	commitUncles(w.localUncles)
+	commitUncles(w.remoteUncles)
 
 	// Create an empty block based on temporary copied state for
 	// sealing in advance without waiting block execution finished.
 	if !noempty && atomic.LoadUint32(&w.noempty) == 0 {
-		w.commit(nil, false, tstart)
+		w.commit(uncles, nil, false, tstart)
 	}
 
 	// Fill the block with all available pending transactions.
-	pending, err := w.czz.TxPool().Pending()
+	pending, err := w.czz.TxPool().Pending(true)
 	if err != nil {
 		log.Error("Failed to fetch pending transactions", "err", err)
 		return
@@ -948,27 +998,27 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		}
 	}
 	if len(localTxs) > 0 {
-		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs)
+		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, localTxs, header.BaseFee)
 		if w.commitTransactions(txs, w.coinbase, interrupt) {
 			return
 		}
 	}
 	if len(remoteTxs) > 0 {
-		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs)
+		txs := types.NewTransactionsByPriceAndNonce(w.current.signer, remoteTxs, header.BaseFee)
 		if w.commitTransactions(txs, w.coinbase, interrupt) {
 			return
 		}
 	}
-	w.commit(w.fullTaskHook, true, tstart)
+	w.commit(uncles, w.fullTaskHook, true, tstart)
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-func (w *worker) commit(interval func(), update bool, start time.Time) error {
+func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := copyReceipts(w.current.receipts)
 	s := w.current.state.Copy()
-	block, err := w.engine.FinalizeAndAssemble(w.chain, w.current.header, s, w.current.txs, receipts)
+	block, err := w.engine.FinalizeAndAssemble(w.chain, w.current.header, s, w.current.txs, uncles, receipts)
 	if err != nil {
 		return err
 	}
@@ -980,8 +1030,9 @@ func (w *worker) commit(interval func(), update bool, start time.Time) error {
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"txs", w.current.tcount, "gas", block.GasUsed(), "fees", totalFees(block, receipts),
-				"elapsed", common.PrettyDuration(time.Since(start)), "difficulty", block.Difficulty())
+				"uncles", len(uncles), "txs", w.current.tcount,
+				"gas", block.GasUsed(), "fees", totalFees(block, receipts),
+				"elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:
 			log.Info("Worker has exited")
@@ -1011,11 +1062,12 @@ func (w *worker) postSideBlock(event core.ChainSideEvent) {
 	}
 }
 
-// totalFees computes total consumed fees in CZZ. Block transactions and receipts have to have the same order.
+// totalFees computes total consumed miner fees in CZZ. Block transactions and receipts have to have the same order.
 func totalFees(block *types.Block, receipts []*types.Receipt) *big.Float {
 	feesWei := new(big.Int)
 	for i, tx := range block.Transactions() {
-		feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), tx.GasPrice()))
+		minerFee, _ := tx.EffectiveGasTip(block.BaseFee())
+		feesWei.Add(feesWei, new(big.Int).Mul(new(big.Int).SetUint64(receipts[i].GasUsed), minerFee))
 	}
 	return new(big.Float).Quo(new(big.Float).SetInt(feesWei), new(big.Float).SetInt(big.NewInt(params.Ether)))
 }

@@ -30,7 +30,6 @@ import (
 	"github.com/classzz/go-classzz-v2/accounts/external"
 	"github.com/classzz/go-classzz-v2/accounts/keystore"
 	"github.com/classzz/go-classzz-v2/accounts/scwallet"
-	// "github.com/classzz/go-classzz-v2/accounts/usbwallet"
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/crypto"
 	"github.com/classzz/go-classzz-v2/log"

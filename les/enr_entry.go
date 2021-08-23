@@ -41,7 +41,7 @@ type ethEntry struct {
 func (ethEntry) ENRKey() string { return "czz" }
 
 // setupDiscovery creates the node discovery source for the czz protocol.
-func (czz *LightClasszz) setupDiscovery() (enode.Iterator, error) {
+func (czz *lightClasszz) setupDiscovery() (enode.Iterator, error) {
 	it := enode.NewFairMix(0)
 
 	// Enable DNS discovery.

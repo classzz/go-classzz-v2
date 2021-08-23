@@ -26,7 +26,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/rawdb"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
-	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
+	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
 	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/p2p/enode"
 )
@@ -41,12 +41,12 @@ const (
 )
 
 type txsync struct {
-	p   *czz.Peer
+	p   *eth.Peer
 	txs []*types.Transaction
 }
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
-func (h *handler) syncTransactions(p *czz.Peer) {
+func (h *handler) syncTransactions(p *eth.Peer) {
 	// Assemble the set of transaction to broadcast or announce to the remote
 	// peer. Fun fact, this is quite an expensive operation as it needs to sort
 	// the transactions if the sorting is not cached yet. However, with a random
@@ -54,17 +54,17 @@ func (h *handler) syncTransactions(p *czz.Peer) {
 	//
 	// TODO(karalabe): Figure out if we could get away with random order somehow
 	var txs types.Transactions
-	pending, _ := h.txpool.Pending()
+	pending, _ := h.txpool.Pending(false)
 	for _, batch := range pending {
 		txs = append(txs, batch...)
 	}
 	if len(txs) == 0 {
 		return
 	}
-	// The czz/65 protocol introduces proper transaction announcements, so instead
+	// The eth/65 protocol introduces proper transaction announcements, so instead
 	// of dripping transactions across multiple peers, just send the entire list as
 	// an announcement and let the remote side decide what they need (likely nothing).
-	if p.Version() >= czz.ETH65 {
+	if p.Version() >= eth.ETH65 {
 		hashes := make([]common.Hash, len(txs))
 		for i, tx := range txs {
 			hashes[i] = tx.Hash()
@@ -95,8 +95,8 @@ func (h *handler) txsyncLoop64() {
 
 	// send starts a sending a pack of transactions from the sync.
 	send := func(s *txsync) {
-		if s.p.Version() >= czz.ETH65 {
-			panic("initial transaction syncer running on czz/65+")
+		if s.p.Version() >= eth.ETH65 {
+			panic("initial transaction syncer running on eth/65+")
 		}
 		// Fill pack with transactions up to the target size.
 		size := common.StorageSize(0)
@@ -166,7 +166,7 @@ type chainSyncer struct {
 // chainSyncOp is a scheduled sync operation.
 type chainSyncOp struct {
 	mode downloader.SyncMode
-	peer *czz.Peer
+	peer *eth.Peer
 	td   *big.Int
 	head common.Hash
 }
@@ -182,7 +182,7 @@ func newChainSyncer(handler *handler) *chainSyncer {
 // handlePeerEvent notifies the syncer about a change in the peer set.
 // This is called for new peers and every time a peer announces a new
 // chain head.
-func (cs *chainSyncer) handlePeerEvent(peer *czz.Peer) bool {
+func (cs *chainSyncer) handlePeerEvent(peer *eth.Peer) bool {
 	select {
 	case cs.peerEventCh <- struct{}{}:
 		return true
@@ -267,7 +267,7 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 	return op
 }
 
-func peerToSyncOp(mode downloader.SyncMode, p *czz.Peer) *chainSyncOp {
+func peerToSyncOp(mode downloader.SyncMode, p *eth.Peer) *chainSyncOp {
 	peerHead, peerTD := p.Head()
 	return &chainSyncOp{mode: mode, peer: p, td: peerTD, head: peerHead}
 }

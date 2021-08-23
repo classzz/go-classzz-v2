@@ -138,8 +138,8 @@ func (c *lesCommons) localCheckpoint(index uint64) params.TrustedCheckpoint {
 }
 
 // setupOracle sets up the checkpoint oracle contract client.
-func (c *lesCommons) setupOracle(node *node.Node, genesis common.Hash, ethconfig *czzconfig.Config) *checkpointoracle.CheckpointOracle {
-	config := ethconfig.CheckpointOracle
+func (c *lesCommons) setupOracle(node *node.Node, genesis common.Hash, czzconfig *czzconfig.Config) *checkpointoracle.CheckpointOracle {
+	config := czzconfig.CheckpointOracle
 	if config == nil {
 		// Try loading default config.
 		config = params.CheckpointOracles[genesis]

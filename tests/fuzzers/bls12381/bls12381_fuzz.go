@@ -134,9 +134,9 @@ func FuzzCrossG2Add(data []byte) int {
 func FuzzCrossG1MultiExp(data []byte) int {
 	var (
 		input        = bytes.NewReader(data)
-		gethScalars  []*big.Int
+		gczzScalars  []*big.Int
 		gnarkScalars []fr.Element
-		gethPoints   []*bls12381.PointG1
+		gczzPoints   []*bls12381.PointG1
 		gnarkPoints  []gnark.G1Affine
 	)
 	// n random scalars (max 17)
@@ -151,21 +151,21 @@ func FuzzCrossG1MultiExp(data []byte) int {
 		if err != nil {
 			break
 		}
-		gethScalars = append(gethScalars, s)
+		gczzScalars = append(gczzScalars, s)
 		var gnarkScalar = &fr.Element{}
 		gnarkScalar = gnarkScalar.SetBigInt(s).FromMont()
 		gnarkScalars = append(gnarkScalars, *gnarkScalar)
 
-		gethPoints = append(gethPoints, new(bls12381.PointG1).Set(kp1))
+		gczzPoints = append(gczzPoints, new(bls12381.PointG1).Set(kp1))
 		gnarkPoints = append(gnarkPoints, *cp1)
 	}
-	if len(gethScalars) == 0 {
+	if len(gczzScalars) == 0 {
 		return 0
 	}
 	// compute multi exponentiation
 	g1 := bls12381.NewG1()
 	kp := bls12381.PointG1{}
-	if _, err := g1.MultiExp(&kp, gethPoints, gethScalars); err != nil {
+	if _, err := g1.MultiExp(&kp, gczzPoints, gczzScalars); err != nil {
 		panic(fmt.Sprintf("G1 multi exponentiation errored (gczz): %v", err))
 	}
 	// note that gczz/crypto/bls12381.MultiExp mutates the scalars slice (and sets all the scalars to zero)

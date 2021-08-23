@@ -37,7 +37,7 @@ var (
 		Description: `
     gczz wallet import /path/to/my/presale.wallet
 
-will prompt for your password and imports your czz presale account.
+will prompt for your password and imports your ether presale account.
 It can be used non-interactively with the --password option taking a
 passwordfile as argument containing the wallet password in plaintext.`,
 		Subcommands: []cli.Command{
@@ -57,7 +57,7 @@ passwordfile as argument containing the wallet password in plaintext.`,
 				Description: `
 	gczz wallet [options] /path/to/my/presale.wallet
 
-will prompt for your password and imports your czz presale account.
+will prompt for your password and imports your ether presale account.
 It can be used non-interactively with the --password option taking a
 passwordfile as argument containing the wallet password in plaintext.`,
 			},

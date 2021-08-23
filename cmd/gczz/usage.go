@@ -31,7 +31,7 @@ import (
 // AppHelpFlagGroups is the application flags, grouped by functionality.
 var AppHelpFlagGroups = []flags.FlagGroup{
 	{
-		Name: "CLASSZZ",
+		Name: "Classzz",
 		Flags: []cli.Flag{
 			configFileFlag,
 			utils.DataDirFlag,
@@ -42,7 +42,10 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.SmartCardDaemonPathFlag,
 			utils.NetworkIdFlag,
 			utils.MainnetFlag,
-			utils.TestnetFlag,
+			utils.GoerliFlag,
+			utils.RinkebyFlag,
+			utils.CalaverasFlag,
+			utils.RopstenFlag,
 			utils.SyncModeFlag,
 			utils.ExitWhenSyncedFlag,
 			utils.GCModeFlag,
@@ -179,7 +182,6 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.MinerNotifyFlag,
 			utils.MinerNotifyFullFlag,
 			utils.MinerGasPriceFlag,
-			utils.MinerGasTargetFlag,
 			utils.MinerGasLimitFlag,
 			utils.MinerEtherbaseFlag,
 			utils.MinerExtraDataFlag,
@@ -193,14 +195,13 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.GpoBlocksFlag,
 			utils.GpoPercentileFlag,
 			utils.GpoMaxGasPriceFlag,
+			utils.GpoIgnoreGasPriceFlag,
 		},
 	},
 	{
 		Name: "VIRTUAL MACHINE",
 		Flags: []cli.Flag{
 			utils.VMEnableDebugFlag,
-			utils.EVMInterpreterFlag,
-			utils.EWASMInterpreterFlag,
 		},
 	},
 	{
@@ -224,6 +225,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.LegacyRPCCORSDomainFlag,
 			utils.LegacyRPCVirtualHostsFlag,
 			utils.LegacyRPCApiFlag,
+			utils.LegacyMinerGasTargetFlag,
 		},
 	},
 	{
@@ -233,15 +235,6 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.BloomFilterSizeFlag,
 			cli.HelpFlag,
 			utils.CatalystFlag,
-		},
-	},
-	{
-		Name: "CLIENT",
-		Flags: []cli.Flag{
-			utils.ClientEthFlag,
-			utils.ClientHecoFlag,
-			utils.ClientBscFlag,
-			utils.ClientOkexFlag,
 		},
 	},
 }

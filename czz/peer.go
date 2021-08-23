@@ -21,21 +21,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
+	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 )
 
-// ethPeerInfo represents a short summary of the `czz` sub-protocol metadata known
+// czzPeerInfo represents a short summary of the `czz` sub-protocol metadata known
 // about a connected peer.
-type ethPeerInfo struct {
+type czzPeerInfo struct {
 	Version    uint     `json:"version"`    // Classzz protocol version negotiated
 	Difficulty *big.Int `json:"difficulty"` // Total difficulty of the peer's blockchain
 	Head       string   `json:"head"`       // Hex hash of the peer's best owned block
 }
 
-// ethPeer is a wrapper around czz.Peer to maintain a few extra metadata.
-type ethPeer struct {
-	*czz.Peer
+// czzPeer is a wrapper around czz.Peer to maintain a few extra metadata.
+type czzPeer struct {
+	*eth.Peer
 	snapExt *snapPeer // Satellite `snap` connection
 
 	syncDrop *time.Timer   // Connection dropper if `czz` sync progress isn't validated in time
@@ -44,10 +44,10 @@ type ethPeer struct {
 }
 
 // info gathers and returns some `czz` protocol metadata known about a peer.
-func (p *ethPeer) info() *ethPeerInfo {
+func (p *czzPeer) info() *czzPeerInfo {
 	hash, td := p.Head()
 
-	return &ethPeerInfo{
+	return &czzPeerInfo{
 		Version:    p.Version(),
 		Difficulty: td,
 		Head:       hash.Hex(),

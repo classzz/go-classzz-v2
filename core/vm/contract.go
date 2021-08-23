@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"github.com/classzz/go-classzz-v2/accounts/abi"
 	"math/big"
 
 	"github.com/classzz/go-classzz-v2/common"
@@ -197,29 +196,4 @@ func (c *Contract) SetCodeOptionalHash(addr *common.Address, codeAndHash *codeAn
 	c.Code = codeAndHash.code
 	c.CodeHash = codeAndHash.hash
 	c.CodeAddr = addr
-}
-
-type tewaka struct{}
-
-func (c *tewaka) RequiredGas(evm *EVM, input []byte) uint64 {
-	var (
-		baseGas uint64 = 21000
-		method  *abi.Method
-		err     error
-	)
-
-	method, err = AbiTeWaKa.MethodById(input)
-
-	if err != nil {
-		return baseGas
-	}
-	if gas, ok := TeWaKaGas[method.Name]; ok {
-		return gas
-	} else {
-		return baseGas
-	}
-}
-
-func (c *tewaka) Run(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
-	return RunStaking(evm, contract, input)
 }

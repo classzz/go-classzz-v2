@@ -117,7 +117,7 @@ func (czz *Classzz) stateAtBlock(block *types.Block, reexec uint64, base *state.
 			return nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
 		}
 		// Finalize the state so any modifications are written to the trie
-		root, err := statedb.Commit(true)
+		root, err := statedb.Commit(czz.blockchain.Config().IsEIP158(current.Number()))
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +162,7 @@ func (czz *Classzz) stateAtTransaction(block *types.Block, txIndex int, reexec u
 	signer := types.MakeSigner(czz.blockchain.Config(), block.Number())
 	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message and return if the requested offset
-		msg, _ := tx.AsMessage(signer)
+		msg, _ := tx.AsMessage(signer, block.BaseFee())
 		txContext := core.NewEVMTxContext(msg)
 		context := core.NewEVMBlockContext(block.Header(), czz.blockchain, nil)
 		if idx == txIndex {
@@ -170,13 +170,13 @@ func (czz *Classzz) stateAtTransaction(block *types.Block, txIndex int, reexec u
 		}
 		// Not yet the searched for transaction, execute on top of the current state
 		vmenv := vm.NewEVM(context, txContext, statedb, czz.blockchain.Config(), vm.Config{})
-		statedb.Prepare(tx.Hash(), block.Hash(), idx)
+		statedb.Prepare(tx.Hash(), idx)
 		if _, err := core.ApplyMessage(vmenv, msg, new(core.GasPool).AddGas(tx.Gas())); err != nil {
 			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %v", tx.Hash(), err)
 		}
 		// Ensure any modifications are committed to the state
 		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-		statedb.Finalise(true)
+		statedb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
 	}
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash())
 }

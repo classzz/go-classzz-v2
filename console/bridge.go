@@ -25,12 +25,11 @@ import (
 	"time"
 
 	"github.com/classzz/go-classzz-v2/accounts/scwallet"
-	"github.com/dop251/goja"
-	// "github.com/classzz/go-classzz-v2/accounts/usbwallet"
 	"github.com/classzz/go-classzz-v2/common/hexutil"
 	"github.com/classzz/go-classzz-v2/console/prompt"
 	"github.com/classzz/go-classzz-v2/internal/jsre"
 	"github.com/classzz/go-classzz-v2/rpc"
+	"github.com/dop251/goja"
 )
 
 // bridge is a collection of JavaScript utility methods to bride the .js runtime

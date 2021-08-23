@@ -3,6 +3,7 @@
 package czzconfig
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/classzz/go-classzz-v2/common"
@@ -47,22 +48,17 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		TrieTimeout             time.Duration
 		SnapshotCache           int
 		Preimages               bool
-		EthClient               []string `toml:",omitempty"`
-		HecoClient              []string `toml:",omitempty"`
-		BscClient               []string `toml:",omitempty"`
-		OkexClient              []string `toml:",omitempty"`
 		Miner                   miner.Config
 		Ethash                  ethash.Config
 		TxPool                  core.TxPoolConfig
 		GPO                     gasprice.Config
 		EnablePreimageRecording bool
 		DocRoot                 string `toml:"-"`
-		EWASMInterpreter        string
-		EVMInterpreter          string
-		RPCGasCap               uint64                         `toml:",omitempty"`
-		RPCTxFeeCap             float64                        `toml:",omitempty"`
+		RPCGasCap               uint64
+		RPCTxFeeCap             float64
 		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
 		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
+		OverrideLondon          *big.Int                       `toml:",omitempty"`
 	}
 	var enc Config
 	enc.Genesis = c.Genesis
@@ -95,22 +91,17 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.TrieTimeout = c.TrieTimeout
 	enc.SnapshotCache = c.SnapshotCache
 	enc.Preimages = c.Preimages
-	enc.EthClient = c.EthClient
-	enc.HecoClient = c.HecoClient
-	enc.BscClient = c.BscClient
-	enc.OkexClient = c.OkexClient
 	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
 	enc.GPO = c.GPO
 	enc.EnablePreimageRecording = c.EnablePreimageRecording
 	enc.DocRoot = c.DocRoot
-	enc.EWASMInterpreter = c.EWASMInterpreter
-	enc.EVMInterpreter = c.EVMInterpreter
 	enc.RPCGasCap = c.RPCGasCap
 	enc.RPCTxFeeCap = c.RPCTxFeeCap
 	enc.Checkpoint = c.Checkpoint
 	enc.CheckpointOracle = c.CheckpointOracle
+	enc.OverrideLondon = c.OverrideLondon
 	return &enc, nil
 }
 
@@ -147,22 +138,17 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		TrieTimeout             *time.Duration
 		SnapshotCache           *int
 		Preimages               *bool
-		EthClient               []string `toml:",omitempty"`
-		HecoClient              []string `toml:",omitempty"`
-		BscClient               []string `toml:",omitempty"`
-		OkexClient              []string `toml:",omitempty"`
 		Miner                   *miner.Config
 		Ethash                  *ethash.Config
 		TxPool                  *core.TxPoolConfig
 		GPO                     *gasprice.Config
 		EnablePreimageRecording *bool
 		DocRoot                 *string `toml:"-"`
-		EWASMInterpreter        *string
-		EVMInterpreter          *string
-		RPCGasCap               *uint64                        `toml:",omitempty"`
-		RPCTxFeeCap             *float64                       `toml:",omitempty"`
+		RPCGasCap               *uint64
+		RPCTxFeeCap             *float64
 		Checkpoint              *params.TrustedCheckpoint      `toml:",omitempty"`
 		CheckpointOracle        *params.CheckpointOracleConfig `toml:",omitempty"`
+		OverrideLondon          *big.Int                       `toml:",omitempty"`
 	}
 	var dec Config
 	if err := unmarshal(&dec); err != nil {
@@ -258,18 +244,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.Preimages != nil {
 		c.Preimages = *dec.Preimages
 	}
-	if dec.EthClient != nil {
-		c.EthClient = dec.EthClient
-	}
-	if dec.HecoClient != nil {
-		c.HecoClient = dec.HecoClient
-	}
-	if dec.BscClient != nil {
-		c.BscClient = dec.BscClient
-	}
-	if dec.OkexClient != nil {
-		c.OkexClient = dec.OkexClient
-	}
 	if dec.Miner != nil {
 		c.Miner = *dec.Miner
 	}
@@ -288,12 +262,6 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.DocRoot != nil {
 		c.DocRoot = *dec.DocRoot
 	}
-	if dec.EWASMInterpreter != nil {
-		c.EWASMInterpreter = *dec.EWASMInterpreter
-	}
-	if dec.EVMInterpreter != nil {
-		c.EVMInterpreter = *dec.EVMInterpreter
-	}
 	if dec.RPCGasCap != nil {
 		c.RPCGasCap = *dec.RPCGasCap
 	}
@@ -305,6 +273,9 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.CheckpointOracle != nil {
 		c.CheckpointOracle = dec.CheckpointOracle
+	}
+	if dec.OverrideLondon != nil {
+		c.OverrideLondon = dec.OverrideLondon
 	}
 	return nil
 }

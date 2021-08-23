@@ -20,8 +20,6 @@ import (
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/log"
-	"github.com/classzz/go-classzz-v2/rlp"
-	"math/big"
 )
 
 // ReadPreimage retrieves a single preimage of the provided hash.
@@ -94,26 +92,5 @@ func WriteTrieNode(db czzdb.KeyValueWriter, hash common.Hash, node []byte) {
 func DeleteTrieNode(db czzdb.KeyValueWriter, hash common.Hash) {
 	if err := db.Delete(hash.Bytes()); err != nil {
 		log.Crit("Failed to delete trie node", "err", err)
-	}
-}
-
-func HasRecord(db czzdb.KeyValueReader,atype uint64, hash common.Hash) bool {
-	if has, err := db.Has(recordKeyPrefix(atype,hash)); !has || err != nil {
-		return false
-	}
-	return true
-}
-func WriteRecord(db czzdb.KeyValueWriter,atype uint64, hash common.Hash) {
-	data, err := rlp.EncodeToBytes(big.NewInt(1))
-	if err != nil {
-		log.Crit("Failed to RLP encode the 1 from record", "err", err)
-	}
-	if err := db.Put(recordKeyPrefix(atype,hash), data); err != nil {
-		log.Crit("Failed to store the record", "err", err)
-	}
-}
-func DeleteRecord(db czzdb.KeyValueWriter,atype uint64, hash common.Hash) {
-	if err := db.Delete(recordKeyPrefix(atype,hash)); err != nil {
-		log.Crit("Failed to delete the record", "err", err)
 	}
 }

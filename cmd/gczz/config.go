@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"math/big"
 	"os"
 	"reflect"
 	"unicode"
@@ -30,6 +31,7 @@ import (
 	"github.com/classzz/go-classzz-v2/czz/catalyst"
 	"github.com/classzz/go-classzz-v2/czz/czzconfig"
 	"github.com/classzz/go-classzz-v2/internal/czzapi"
+	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/metrics"
 	"github.com/classzz/go-classzz-v2/node"
 	"github.com/classzz/go-classzz-v2/params"
@@ -62,7 +64,12 @@ var tomlSettings = toml.Config{
 		return field
 	},
 	MissingField: func(rt reflect.Type, field string) error {
-		link := ""
+		id := fmt.Sprintf("%s.%s", rt.String(), field)
+		if deprecated(id) {
+			log.Warn("Config field is deprecated and won't have an effect", "name", id)
+			return nil
+		}
+		var link string
 		if unicode.IsUpper(rune(rt.Name()[0])) && rt.PkgPath() != "main" {
 			link = fmt.Sprintf(", see https://godoc.org/%s#%s for available fields", rt.PkgPath(), rt.Name())
 		}
@@ -70,14 +77,14 @@ var tomlSettings = toml.Config{
 	},
 }
 
-type ethstatsConfig struct {
+type czzstatsConfig struct {
 	URL string `toml:",omitempty"`
 }
 
 type gczzConfig struct {
 	Czz      czzconfig.Config
 	Node     node.Config
-	Ethstats ethstatsConfig
+	Czzstats czzstatsConfig
 	Metrics  metrics.Config
 }
 
@@ -130,7 +137,7 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gczzConfig) {
 	}
 	utils.SetEthConfig(ctx, stack, &cfg.Czz)
 	if ctx.GlobalIsSet(utils.EthStatsURLFlag.Name) {
-		cfg.Ethstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
+		cfg.Czzstats.URL = ctx.GlobalString(utils.EthStatsURLFlag.Name)
 	}
 	applyMetricConfig(ctx, &cfg)
 
@@ -140,6 +147,9 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, gczzConfig) {
 // makeFullNode loads gczz configuration and creates the Classzz backend.
 func makeFullNode(ctx *cli.Context) (*node.Node, czzapi.Backend) {
 	stack, cfg := makeConfigNode(ctx)
+	if ctx.GlobalIsSet(utils.OverrideLondonFlag.Name) {
+		cfg.Czz.OverrideLondon = new(big.Int).SetUint64(ctx.GlobalUint64(utils.OverrideLondonFlag.Name))
+	}
 	backend, czz := utils.RegisterEthService(stack, &cfg.Czz)
 
 	// Configure catalyst.
@@ -157,8 +167,8 @@ func makeFullNode(ctx *cli.Context) (*node.Node, czzapi.Backend) {
 		utils.RegisterGraphQLService(stack, backend, cfg.Node)
 	}
 	// Add the Classzz Stats daemon if requested.
-	if cfg.Ethstats.URL != "" {
-		utils.RegisterEthStatsService(stack, backend, cfg.Ethstats.URL)
+	if cfg.Czzstats.URL != "" {
+		utils.RegisterEthStatsService(stack, backend, cfg.Czzstats.URL)
 	}
 	return stack, backend
 }
@@ -222,5 +232,16 @@ func applyMetricConfig(ctx *cli.Context, cfg *gczzConfig) {
 	}
 	if ctx.GlobalIsSet(utils.MetricsInfluxDBTagsFlag.Name) {
 		cfg.Metrics.InfluxDBTags = ctx.GlobalString(utils.MetricsInfluxDBTagsFlag.Name)
+	}
+}
+
+func deprecated(field string) bool {
+	switch field {
+	case "czzconfig.Config.EVMInterpreter":
+		return true
+	case "czzconfig.Config.EWASMInterpreter":
+		return true
+	default:
+		return false
 	}
 }

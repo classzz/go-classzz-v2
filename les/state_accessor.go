@@ -29,12 +29,12 @@ import (
 )
 
 // stateAtBlock retrieves the state database associated with a certain block.
-func (leth *LightClasszz) stateAtBlock(ctx context.Context, block *types.Block, reexec uint64) (*state.StateDB, error) {
+func (leth *lightClasszz) stateAtBlock(ctx context.Context, block *types.Block, reexec uint64) (*state.StateDB, error) {
 	return light.NewState(ctx, block.Header(), leth.odr), nil
 }
 
 // stateAtTransaction returns the execution environment of a certain transaction.
-func (leth *LightClasszz) stateAtTransaction(ctx context.Context, block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
+func (leth *lightClasszz) stateAtTransaction(ctx context.Context, block *types.Block, txIndex int, reexec uint64) (core.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis block.
 	if block.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
@@ -55,10 +55,10 @@ func (leth *LightClasszz) stateAtTransaction(ctx context.Context, block *types.B
 	signer := types.MakeSigner(leth.blockchain.Config(), block.Number())
 	for idx, tx := range block.Transactions() {
 		// Assemble the transaction call message and return if the requested offset
-		msg, _ := tx.AsMessage(signer)
+		msg, _ := tx.AsMessage(signer, block.BaseFee())
 		txContext := core.NewEVMTxContext(msg)
 		context := core.NewEVMBlockContext(block.Header(), leth.blockchain, nil)
-		statedb.Prepare(tx.Hash(), block.Hash(), idx)
+		statedb.Prepare(tx.Hash(), idx)
 		if idx == txIndex {
 			return msg, context, statedb, nil
 		}
@@ -69,7 +69,7 @@ func (leth *LightClasszz) stateAtTransaction(ctx context.Context, block *types.B
 		}
 		// Ensure any modifications are committed to the state
 		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-		statedb.Finalise(true)
+		statedb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
 	}
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash())
 }

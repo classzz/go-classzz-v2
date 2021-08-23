@@ -19,7 +19,6 @@ package state
 import (
 	"bytes"
 	"fmt"
-	"github.com/classzz/go-classzz-v2/log"
 	"io"
 	"math/big"
 	"time"
@@ -57,25 +56,6 @@ func (s Storage) Copy() Storage {
 	return cpy
 }
 
-type TeWakaStorage map[common.Hash][]byte
-
-func (self TeWakaStorage) String() (str string) {
-	for key, value := range self {
-		str += fmt.Sprintf("%X : %X\n", key, value)
-	}
-
-	return
-}
-
-func (self TeWakaStorage) Copy() TeWakaStorage {
-	cpy := make(TeWakaStorage)
-	for key, value := range self {
-		cpy[key] = value
-	}
-
-	return cpy
-}
-
 // stateObject represents an Classzz account which is being modified.
 //
 // The usage pattern is as follows:
@@ -104,9 +84,6 @@ type stateObject struct {
 	dirtyStorage   Storage // Storage entries that have been modified in the current transaction execution
 	fakeStorage    Storage // Fake storage which constructed by caller for debugging purpose.
 
-	originTeWakaStorage TeWakaStorage
-	dirtyTeWakaStorage  TeWakaStorage
-
 	// Cache flags.
 	// When an object is marked suicided it will be delete from the trie
 	// during the "update" phase of the state transition.
@@ -117,7 +94,7 @@ type stateObject struct {
 
 // empty returns whether the account is considered empty.
 func (s *stateObject) empty() bool {
-	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash) && len(s.dirtyTeWakaStorage) == 0
+	return s.data.Nonce == 0 && s.data.Balance.Sign() == 0 && bytes.Equal(s.data.CodeHash, emptyCodeHash)
 }
 
 // Account is the Classzz consensus representation of accounts.
@@ -141,15 +118,13 @@ func newObject(db *StateDB, address common.Address, data Account) *stateObject {
 		data.Root = emptyRoot
 	}
 	return &stateObject{
-		db:                  db,
-		address:             address,
-		addrHash:            crypto.Keccak256Hash(address[:]),
-		data:                data,
-		originStorage:       make(Storage),
-		pendingStorage:      make(Storage),
-		dirtyStorage:        make(Storage),
-		originTeWakaStorage: make(TeWakaStorage),
-		dirtyTeWakaStorage:  make(TeWakaStorage),
+		db:             db,
+		address:        address,
+		addrHash:       crypto.Keccak256Hash(address[:]),
+		data:           data,
+		originStorage:  make(Storage),
+		pendingStorage: make(Storage),
+		dirtyStorage:   make(Storage),
 	}
 }
 
@@ -289,20 +264,6 @@ func (s *stateObject) GetCommittedState(db Database, key common.Hash) common.Has
 	return value
 }
 
-func (self *stateObject) GetTeWakaState(db Database, key common.Hash) []byte {
-	value, exists := self.originTeWakaStorage[key]
-	if exists {
-		return value
-	}
-	// Load from DB in case it is missing.
-	//fmt.Println("addr.Bytes() GetTeWakaState", key.Bytes())
-	value, err := self.getTrie(db).TryGet(key[:])
-	if err == nil && len(value) != 0 {
-		self.originTeWakaStorage[key] = value
-	}
-	return value
-}
-
 // SetState updates a value in account storage.
 func (s *stateObject) SetState(db Database, key, value common.Hash) {
 	// If the fake storage is set, put the temporary state update here.
@@ -324,24 +285,10 @@ func (s *stateObject) SetState(db Database, key, value common.Hash) {
 	s.setState(key, value)
 }
 
-func (self *stateObject) SetTeWakaState(db Database, key common.Hash, value []byte) {
-	self.db.journal.append(teWakaStorageChange{
-		account:  &self.address,
-		key:      key,
-		prevalue: self.GetTeWakaState(db, key),
-	})
-	self.setStateByteArray(key, value)
-}
-
-func (self *stateObject) setStateByteArray(key common.Hash, value []byte) {
-	self.originTeWakaStorage[key] = value
-	self.dirtyTeWakaStorage[key] = value
-}
-
 // SetStorage replaces the entire state storage with the given one.
 //
 // After this function is called, all original state will be ignored and state
-// lookup only happens in the fake state storage.-
+// lookup only happens in the fake state storage.
 //
 // Note this function should only be used for debugging purpose.
 func (s *stateObject) SetStorage(storage map[common.Hash]common.Hash) {
@@ -383,7 +330,7 @@ func (s *stateObject) finalise(prefetch bool) {
 func (s *stateObject) updateTrie(db Database) Trie {
 	// Make sure all dirty slots are finalized into the pending storage area
 	s.finalise(false) // Don't prefetch any more, pull directly if need be
-	if len(s.pendingStorage) == 0 && len(s.dirtyTeWakaStorage) == 0 {
+	if len(s.pendingStorage) == 0 {
 		return s.trie
 	}
 	// Track the amount of time wasted on updating the storage trie
@@ -430,16 +377,6 @@ func (s *stateObject) updateTrie(db Database) Trie {
 	}
 	if len(s.pendingStorage) > 0 {
 		s.pendingStorage = make(Storage)
-	}
-
-	log.Debug("updateTrie", "count", len(s.dirtyStorage), "TeWakaStorage", len(s.dirtyTeWakaStorage))
-	for key, value := range s.dirtyTeWakaStorage {
-		delete(s.dirtyTeWakaStorage, key)
-		if len(value) == 0 {
-			s.setError(tr.TryDelete(key[:]))
-			continue
-		}
-		s.setError(tr.TryUpdate(key[:], value))
 	}
 	return tr
 }
@@ -513,9 +450,6 @@ func (s *stateObject) setBalance(amount *big.Int) {
 	s.data.Balance = amount
 }
 
-// Return the gas back to the origin. Used by the Virtual machine or Closures
-func (s *stateObject) ReturnGas(gas *big.Int) {}
-
 func (s *stateObject) deepCopy(db *StateDB) *stateObject {
 	stateObject := newObject(db, s.address, s.data)
 	if s.trie != nil {
@@ -525,8 +459,6 @@ func (s *stateObject) deepCopy(db *StateDB) *stateObject {
 	stateObject.dirtyStorage = s.dirtyStorage.Copy()
 	stateObject.originStorage = s.originStorage.Copy()
 	stateObject.pendingStorage = s.pendingStorage.Copy()
-	stateObject.dirtyTeWakaStorage = s.dirtyTeWakaStorage.Copy()
-	stateObject.originTeWakaStorage = s.originTeWakaStorage.Copy()
 	stateObject.suicided = s.suicided
 	stateObject.dirtyCode = s.dirtyCode
 	stateObject.deleted = s.deleted

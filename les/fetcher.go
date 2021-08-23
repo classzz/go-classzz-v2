@@ -163,8 +163,7 @@ func newLightFetcher(chain *light.LightChain, engine consensus.Engine, peers *se
 	// Construct the fetcher by offering all necessary APIs
 	validator := func(header *types.Header) error {
 		// Disable seal verification explicitly if we are running in ulc mode.
-		// there was no support for the light chain
-		return engine.VerifyHeader(chain, header, ulc == nil, nil)
+		return engine.VerifyHeader(chain, header, ulc == nil)
 	}
 	heighter := func() uint64 { return chain.CurrentHeader().Number.Uint64() }
 	dropper := func(id string) { peers.unregister(id) }
@@ -508,7 +507,7 @@ func (f *lightFetcher) requestHeaderByHash(peerid enode.ID) func(common.Hash) er
 			getCost: func(dp distPeer) uint64 { return dp.(*serverPeer).getRequestCost(GetBlockHeadersMsg, 1) },
 			canSend: func(dp distPeer) bool { return dp.(*serverPeer).ID() == peerid },
 			request: func(dp distPeer) func() {
-				peer, id := dp.(*serverPeer), genReqID()
+				peer, id := dp.(*serverPeer), rand.Uint64()
 				cost := peer.getRequestCost(GetBlockHeadersMsg, 1)
 				peer.fcServer.QueuedRequest(id, cost)
 

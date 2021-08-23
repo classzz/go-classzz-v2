@@ -28,11 +28,12 @@ import (
 	"github.com/classzz/go-classzz-v2/accounts"
 	"github.com/classzz/go-classzz-v2/accounts/keystore"
 	"github.com/classzz/go-classzz-v2/accounts/scwallet"
-	// "github.com/classzz/go-classzz-v2/accounts/usbwallet"
+	"github.com/classzz/go-classzz-v2/accounts/usbwallet"
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/common/hexutil"
 	"github.com/classzz/go-classzz-v2/internal/czzapi"
 	"github.com/classzz/go-classzz-v2/log"
+	"github.com/classzz/go-classzz-v2/signer/core/apitypes"
 	"github.com/classzz/go-classzz-v2/signer/storage"
 )
 
@@ -52,7 +53,7 @@ type ExternalAPI interface {
 	// New request to create a new account
 	New(ctx context.Context) (common.Address, error)
 	// SignTransaction request to sign the specified transaction
-	SignTransaction(ctx context.Context, args SendTxArgs, methodSelector *string) (*czzapi.SignTransactionResult, error)
+	SignTransaction(ctx context.Context, args apitypes.SendTxArgs, methodSelector *string) (*czzapi.SignTransactionResult, error)
 	// SignData - request to sign the given data (plus prefix)
 	SignData(ctx context.Context, contentType string, addr common.MixedcaseAddress, data interface{}) (hexutil.Bytes, error)
 	// SignTypedData - request to sign the given structured data (plus prefix)
@@ -104,7 +105,7 @@ type Validator interface {
 	// ValidateTransaction does a number of checks on the supplied transaction, and
 	// returns either a list of warnings, or an error (indicating that the transaction
 	// should be immediately rejected).
-	ValidateTransaction(selector *string, tx *SendTxArgs) (*ValidationMessages, error)
+	ValidateTransaction(selector *string, tx *apitypes.SendTxArgs) (*apitypes.ValidationMessages, error)
 }
 
 // SignerAPI defines the actual implementation of ExternalAPI
@@ -138,29 +139,29 @@ func StartClefAccountManager(ksLocation string, nousb, lightKDF bool, scpath str
 	if len(ksLocation) > 0 {
 		backends = append(backends, keystore.NewKeyStore(ksLocation, n, p))
 	}
-	// if !nousb {
-	// 	// Start a USB hub for Ledger hardware wallets
-	// 	if ledgerhub, err := usbwallet.NewLedgerHub(); err != nil {
-	// 		log.Warn(fmt.Sprintf("Failed to start Ledger hub, disabling: %v", err))
-	// 	} else {
-	// 		backends = append(backends, ledgerhub)
-	// 		log.Debug("Ledger support enabled")
-	// 	}
-	// 	// Start a USB hub for Trezor hardware wallets (HID version)
-	// 	if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
-	// 		log.Warn(fmt.Sprintf("Failed to start HID Trezor hub, disabling: %v", err))
-	// 	} else {
-	// 		backends = append(backends, trezorhub)
-	// 		log.Debug("Trezor support enabled via HID")
-	// 	}
-	// 	// Start a USB hub for Trezor hardware wallets (WebUSB version)
-	// 	if trezorhub, err := usbwallet.NewTrezorHubWithWebUSB(); err != nil {
-	// 		log.Warn(fmt.Sprintf("Failed to start WebUSB Trezor hub, disabling: %v", err))
-	// 	} else {
-	// 		backends = append(backends, trezorhub)
-	// 		log.Debug("Trezor support enabled via WebUSB")
-	// 	}
-	// }
+	if !nousb {
+		// Start a USB hub for Ledger hardware wallets
+		if ledgerhub, err := usbwallet.NewLedgerHub(); err != nil {
+			log.Warn(fmt.Sprintf("Failed to start Ledger hub, disabling: %v", err))
+		} else {
+			backends = append(backends, ledgerhub)
+			log.Debug("Ledger support enabled")
+		}
+		// Start a USB hub for Trezor hardware wallets (HID version)
+		if trezorhub, err := usbwallet.NewTrezorHubWithHID(); err != nil {
+			log.Warn(fmt.Sprintf("Failed to start HID Trezor hub, disabling: %v", err))
+		} else {
+			backends = append(backends, trezorhub)
+			log.Debug("Trezor support enabled via HID")
+		}
+		// Start a USB hub for Trezor hardware wallets (WebUSB version)
+		if trezorhub, err := usbwallet.NewTrezorHubWithWebUSB(); err != nil {
+			log.Warn(fmt.Sprintf("Failed to start WebUSB Trezor hub, disabling: %v", err))
+		} else {
+			backends = append(backends, trezorhub)
+			log.Debug("Trezor support enabled via WebUSB")
+		}
+	}
 
 	// Start a smart card hub
 	if len(scpath) > 0 {
@@ -220,24 +221,24 @@ func (m Metadata) String() string {
 type (
 	// SignTxRequest contains info about a Transaction to sign
 	SignTxRequest struct {
-		Transaction SendTxArgs       `json:"transaction"`
-		Callinfo    []ValidationInfo `json:"call_info"`
-		Meta        Metadata         `json:"meta"`
+		Transaction apitypes.SendTxArgs       `json:"transaction"`
+		Callinfo    []apitypes.ValidationInfo `json:"call_info"`
+		Meta        Metadata                  `json:"meta"`
 	}
 	// SignTxResponse result from SignTxRequest
 	SignTxResponse struct {
 		//The UI may make changes to the TX
-		Transaction SendTxArgs `json:"transaction"`
-		Approved    bool       `json:"approved"`
+		Transaction apitypes.SendTxArgs `json:"transaction"`
+		Approved    bool                `json:"approved"`
 	}
 	SignDataRequest struct {
-		ContentType string                  `json:"content_type"`
-		Address     common.MixedcaseAddress `json:"address"`
-		Rawdata     []byte                  `json:"raw_data"`
-		Messages    []*NameValueType        `json:"messages"`
-		Callinfo    []ValidationInfo        `json:"call_info"`
-		Hash        hexutil.Bytes           `json:"hash"`
-		Meta        Metadata                `json:"meta"`
+		ContentType string                    `json:"content_type"`
+		Address     common.MixedcaseAddress   `json:"address"`
+		Rawdata     []byte                    `json:"raw_data"`
+		Messages    []*NameValueType          `json:"messages"`
+		Callinfo    []apitypes.ValidationInfo `json:"call_info"`
+		Hash        hexutil.Bytes             `json:"hash"`
+		Meta        Metadata                  `json:"meta"`
 	}
 	SignDataResponse struct {
 		Approved bool `json:"approved"`
@@ -283,9 +284,9 @@ func NewSignerAPI(am *accounts.Manager, chainID int64, noUSB bool, ui UIClientAP
 		log.Info("Clef is in advanced mode: will warn instead of reject")
 	}
 	signer := &SignerAPI{big.NewInt(chainID), am, ui, validator, !advancedMode, credentials}
-	// if !noUSB {
-	// 	signer.startUSBListener()
-	// }
+	if !noUSB {
+		signer.startUSBListener()
+	}
 	return signer
 }
 func (api *SignerAPI) openTrezor(url accounts.URL) {
@@ -321,65 +322,65 @@ func (api *SignerAPI) openTrezor(url accounts.URL) {
 
 // startUSBListener starts a listener for USB events, for hardware wallet interaction
 func (api *SignerAPI) startUSBListener() {
-	// eventCh := make(chan accounts.WalletEvent, 16)
-	// am := api.am
-	// am.Subscribe(eventCh)
-	// // Open any wallets already attached
-	// for _, wallet := range am.Wallets() {
-	// 	if err := wallet.Open(""); err != nil {
-	// 		log.Warn("Failed to open wallet", "url", wallet.URL(), "err", err)
-	// 		if err == usbwallet.ErrTrezorPINNeeded {
-	// 			go api.openTrezor(wallet.URL())
-	// 		}
-	// 	}
-	// }
-	// go api.derivationLoop(eventCh)
+	eventCh := make(chan accounts.WalletEvent, 16)
+	am := api.am
+	am.Subscribe(eventCh)
+	// Open any wallets already attached
+	for _, wallet := range am.Wallets() {
+		if err := wallet.Open(""); err != nil {
+			log.Warn("Failed to open wallet", "url", wallet.URL(), "err", err)
+			if err == usbwallet.ErrTrezorPINNeeded {
+				go api.openTrezor(wallet.URL())
+			}
+		}
+	}
+	go api.derivationLoop(eventCh)
 }
 
 // derivationLoop listens for wallet events
 func (api *SignerAPI) derivationLoop(events chan accounts.WalletEvent) {
 	// Listen for wallet event till termination
-	// for event := range events {
-	// 	switch event.Kind {
-	// 	case accounts.WalletArrived:
-	// 		if err := event.Wallet.Open(""); err != nil {
-	// 			log.Warn("New wallet appeared, failed to open", "url", event.Wallet.URL(), "err", err)
-	// 			if err == usbwallet.ErrTrezorPINNeeded {
-	// 				go api.openTrezor(event.Wallet.URL())
-	// 			}
-	// 		}
-	// 	case accounts.WalletOpened:
-	// 		status, _ := event.Wallet.Status()
-	// 		log.Info("New wallet appeared", "url", event.Wallet.URL(), "status", status)
-	// 		var derive = func(limit int, next func() accounts.DerivationPath) {
-	// 			// Derive first N accounts, hardcoded for now
-	// 			for i := 0; i < limit; i++ {
-	// 				path := next()
-	// 				if acc, err := event.Wallet.Derive(path, true); err != nil {
-	// 					log.Warn("Account derivation failed", "error", err)
-	// 				} else {
-	// 					log.Info("Derived account", "address", acc.Address, "path", path)
-	// 				}
-	// 			}
-	// 		}
-	// 		log.Info("Deriving default paths")
-	// 		derive(numberOfAccountsToDerive, accounts.DefaultIterator(accounts.DefaultBaseDerivationPath))
-	// 		if event.Wallet.URL().Scheme == "ledger" {
-	// 			log.Info("Deriving ledger legacy paths")
-	// 			derive(numberOfAccountsToDerive, accounts.DefaultIterator(accounts.LegacyLedgerBaseDerivationPath))
-	// 			log.Info("Deriving ledger live paths")
-	// 			// For ledger live, since it's based off the same (DefaultBaseDerivationPath)
-	// 			// as one we've already used, we need to step it forward one step to avoid
-	// 			// hitting the same path again
-	// 			nextFn := accounts.LedgerLiveIterator(accounts.DefaultBaseDerivationPath)
-	// 			nextFn()
-	// 			derive(numberOfAccountsToDerive, nextFn)
-	// 		}
-	// 	case accounts.WalletDropped:
-	// 		log.Info("Old wallet dropped", "url", event.Wallet.URL())
-	// 		event.Wallet.Close()
-	// 	}
-	// }
+	for event := range events {
+		switch event.Kind {
+		case accounts.WalletArrived:
+			if err := event.Wallet.Open(""); err != nil {
+				log.Warn("New wallet appeared, failed to open", "url", event.Wallet.URL(), "err", err)
+				if err == usbwallet.ErrTrezorPINNeeded {
+					go api.openTrezor(event.Wallet.URL())
+				}
+			}
+		case accounts.WalletOpened:
+			status, _ := event.Wallet.Status()
+			log.Info("New wallet appeared", "url", event.Wallet.URL(), "status", status)
+			var derive = func(limit int, next func() accounts.DerivationPath) {
+				// Derive first N accounts, hardcoded for now
+				for i := 0; i < limit; i++ {
+					path := next()
+					if acc, err := event.Wallet.Derive(path, true); err != nil {
+						log.Warn("Account derivation failed", "error", err)
+					} else {
+						log.Info("Derived account", "address", acc.Address, "path", path)
+					}
+				}
+			}
+			log.Info("Deriving default paths")
+			derive(numberOfAccountsToDerive, accounts.DefaultIterator(accounts.DefaultBaseDerivationPath))
+			if event.Wallet.URL().Scheme == "ledger" {
+				log.Info("Deriving ledger legacy paths")
+				derive(numberOfAccountsToDerive, accounts.DefaultIterator(accounts.LegacyLedgerBaseDerivationPath))
+				log.Info("Deriving ledger live paths")
+				// For ledger live, since it's based off the same (DefaultBaseDerivationPath)
+				// as one we've already used, we need to step it forward one step to avoid
+				// hitting the same path again
+				nextFn := accounts.LedgerLiveIterator(accounts.DefaultBaseDerivationPath)
+				nextFn()
+				derive(numberOfAccountsToDerive, nextFn)
+			}
+		case accounts.WalletDropped:
+			log.Info("Old wallet dropped", "url", event.Wallet.URL())
+			event.Wallet.Close()
+		}
+	}
 }
 
 // List returns the set of wallet this signer manages. Each wallet can contain
@@ -456,6 +457,16 @@ func (api *SignerAPI) newAccount() (common.Address, error) {
 // it also returns 'true' if the transaction was modified, to make it possible to configure the signer not to allow
 // UI-modifications to requests
 func logDiff(original *SignTxRequest, new *SignTxResponse) bool {
+	var intPtrModified = func(a, b *hexutil.Big) bool {
+		aBig := (*big.Int)(a)
+		bBig := (*big.Int)(b)
+		if aBig != nil && bBig != nil {
+			return aBig.Cmp(bBig) != 0
+		}
+		// One or both of them are nil
+		return a != b
+	}
+
 	modified := false
 	if f0, f1 := original.Transaction.From, new.Transaction.From; !reflect.DeepEqual(f0, f1) {
 		log.Info("Sender-account changed by UI", "was", f0, "is", f1)
@@ -469,9 +480,17 @@ func logDiff(original *SignTxRequest, new *SignTxResponse) bool {
 		modified = true
 		log.Info("Gas changed by UI", "was", g0, "is", g1)
 	}
-	if g0, g1 := big.Int(original.Transaction.GasPrice), big.Int(new.Transaction.GasPrice); g0.Cmp(&g1) != 0 {
+	if a, b := original.Transaction.GasPrice, new.Transaction.GasPrice; intPtrModified(a, b) {
+		log.Info("GasPrice changed by UI", "was", a, "is", b)
 		modified = true
-		log.Info("GasPrice changed by UI", "was", g0, "is", g1)
+	}
+	if a, b := original.Transaction.MaxPriorityFeePerGas, new.Transaction.MaxPriorityFeePerGas; intPtrModified(a, b) {
+		log.Info("maxPriorityFeePerGas changed by UI", "was", a, "is", b)
+		modified = true
+	}
+	if a, b := original.Transaction.MaxFeePerGas, new.Transaction.MaxFeePerGas; intPtrModified(a, b) {
+		log.Info("maxFeePerGas changed by UI", "was", a, "is", b)
+		modified = true
 	}
 	if v0, v1 := big.Int(original.Transaction.Value), big.Int(new.Transaction.Value); v0.Cmp(&v1) != 0 {
 		modified = true
@@ -519,7 +538,7 @@ func (api *SignerAPI) lookupOrQueryPassword(address common.Address, title, promp
 }
 
 // SignTransaction signs the given Transaction and returns it both as json and rlp-encoded form
-func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, methodSelector *string) (*czzapi.SignTransactionResult, error) {
+func (api *SignerAPI) SignTransaction(ctx context.Context, args apitypes.SendTxArgs, methodSelector *string) (*czzapi.SignTransactionResult, error) {
 	var (
 		err    error
 		result SignTxResponse
@@ -530,7 +549,7 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 	}
 	// If we are in 'rejectMode', then reject rather than show the user warnings
 	if api.rejectMode {
-		if err := msgs.getWarnings(); err != nil {
+		if err := msgs.GetWarnings(); err != nil {
 			return nil, err
 		}
 	}
@@ -567,7 +586,7 @@ func (api *SignerAPI) SignTransaction(ctx context.Context, args SendTxArgs, meth
 		return nil, err
 	}
 	// Convert fields into a real transaction
-	var unsignedTx = result.Transaction.toTransaction()
+	var unsignedTx = result.Transaction.ToTransaction()
 	// Get the password for the transaction
 	pw, err := api.lookupOrQueryPassword(acc.Address, "Account password",
 		fmt.Sprintf("Please enter the password for account %s", acc.Address.String()))
@@ -603,7 +622,7 @@ func (api *SignerAPI) SignGnosisSafeTx(ctx context.Context, signerAddress common
 	}
 	// If we are in 'rejectMode', then reject rather than show the user warnings
 	if api.rejectMode {
-		if err := msgs.getWarnings(); err != nil {
+		if err := msgs.GetWarnings(); err != nil {
 			return nil, err
 		}
 	}

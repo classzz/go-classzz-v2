@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/classzz/go-classzz-v2/common"
+	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"github.com/classzz/go-classzz-v2/core"
 	"github.com/classzz/go-classzz-v2/core/state"
 	"github.com/classzz/go-classzz-v2/core/types"
@@ -38,10 +39,10 @@ import (
 // Register adds catalyst APIs to the node.
 func Register(stack *node.Node, backend *czz.Classzz) error {
 	chainconfig := backend.BlockChain().Config()
-	if chainconfig.NoRewardBlock == nil {
-		return errors.New("noRewardBlock is not set in genesis config")
-	} else if chainconfig.NoRewardBlock.Sign() != 0 {
-		return errors.New("noRewardBlock of genesis config must be zero")
+	if chainconfig.CatalystBlock == nil {
+		return errors.New("catalystBlock is not set in genesis config")
+	} else if chainconfig.CatalystBlock.Sign() != 0 {
+		return errors.New("catalystBlock of genesis config must be zero")
 	}
 
 	log.Warn("Catalyst mode enabled")
@@ -79,8 +80,10 @@ type blockExecutionEnv struct {
 
 func (env *blockExecutionEnv) commitTransaction(tx *types.Transaction, coinbase common.Address) error {
 	vmconfig := *env.chain.GetVMConfig()
+	snap := env.state.Snapshot()
 	receipt, err := core.ApplyTransaction(env.chain.Config(), env.chain, &coinbase, env.gasPool, env.state, env.header, tx, &env.header.GasUsed, vmconfig)
 	if err != nil {
+		env.state.RevertToSnapshot(snap)
 		return err
 	}
 	env.txs = append(env.txs, tx)
@@ -125,7 +128,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 		time.Sleep(wait)
 	}
 
-	pending, err := pool.Pending()
+	pending, err := pool.Pending(true)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +146,9 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 		Extra:      []byte{},
 		Time:       params.Timestamp,
 	}
+	if config := api.czz.BlockChain().Config(); config.IsLondon(header.Number) {
+		header.BaseFee = misc.CalcBaseFee(config, parent.Header())
+	}
 	err = api.czz.Engine().Prepare(bc, header)
 	if err != nil {
 		return nil, err
@@ -155,7 +161,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 
 	var (
 		signer       = types.MakeSigner(bc.Config(), header.Number)
-		txHeap       = types.NewTransactionsByPriceAndNonce(signer, pending)
+		txHeap       = types.NewTransactionsByPriceAndNonce(signer, pending, nil)
 		transactions []*types.Transaction
 	)
 	for {
@@ -172,7 +178,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 		from, _ := types.Sender(signer, tx)
 
 		// Execute the transaction
-		env.state.Prepare(tx.Hash(), common.Hash{}, env.tcount)
+		env.state.Prepare(tx.Hash(), env.tcount)
 		err = env.commitTransaction(tx, coinbase)
 		switch err {
 		case core.ErrGasLimitReached:
@@ -205,7 +211,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 	}
 
 	// Create the block.
-	block, err := api.czz.Engine().FinalizeAndAssemble(bc, header, env.state, transactions, env.receipts)
+	block, err := api.czz.Engine().FinalizeAndAssemble(bc, header, env.state, transactions, nil /* uncles */, env.receipts)
 	if err != nil {
 		return nil, err
 	}
@@ -244,7 +250,7 @@ func decodeTransactions(enc [][]byte) ([]*types.Transaction, error) {
 	return txs, nil
 }
 
-func insertBlockParamsToBlock(params executableData) (*types.Block, error) {
+func insertBlockParamsToBlock(config *chainParams.ChainConfig, parent *types.Header, params executableData) (*types.Block, error) {
 	txs, err := decodeTransactions(params.Transactions)
 	if err != nil {
 		return nil, err
@@ -253,8 +259,8 @@ func insertBlockParamsToBlock(params executableData) (*types.Block, error) {
 	number := big.NewInt(0)
 	number.SetUint64(params.Number)
 	header := &types.Header{
-		ParentHash: params.ParentHash,
-		//UncleHash:   types.EmptyUncleHash,
+		ParentHash:  params.ParentHash,
+		UncleHash:   types.EmptyUncleHash,
 		Coinbase:    params.Miner,
 		Root:        params.StateRoot,
 		TxHash:      types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
@@ -266,7 +272,10 @@ func insertBlockParamsToBlock(params executableData) (*types.Block, error) {
 		GasUsed:     params.GasUsed,
 		Time:        params.Timestamp,
 	}
-	block := types.NewBlockWithHeader(header).WithBody(txs)
+	if config.IsLondon(number) {
+		header.BaseFee = misc.CalcBaseFee(config, parent)
+	}
+	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */)
 	return block, nil
 }
 
@@ -278,11 +287,10 @@ func (api *consensusAPI) NewBlock(params executableData) (*newBlockResponse, err
 	if parent == nil {
 		return &newBlockResponse{false}, fmt.Errorf("could not find parent %x", params.ParentHash)
 	}
-	block, err := insertBlockParamsToBlock(params)
+	block, err := insertBlockParamsToBlock(api.czz.BlockChain().Config(), parent.Header(), params)
 	if err != nil {
 		return nil, err
 	}
-
 	_, err = api.czz.BlockChain().InsertChainWithoutSealVerification(block)
 	return &newBlockResponse{err == nil}, err
 }

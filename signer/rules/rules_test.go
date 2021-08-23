@@ -28,6 +28,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/internal/czzapi"
 	"github.com/classzz/go-classzz-v2/signer/core"
+	"github.com/classzz/go-classzz-v2/signer/core/apitypes"
 	"github.com/classzz/go-classzz-v2/signer/storage"
 )
 
@@ -180,7 +181,7 @@ func TestSignTxRequest(t *testing.T) {
 	}
 	t.Logf("to %v", to.Address().String())
 	resp, err := r.ApproveTx(&core.SignTxRequest{
-		Transaction: core.SendTxArgs{
+		Transaction: apitypes.SendTxArgs{
 			From: *from,
 			To:   to},
 		Callinfo: nil,
@@ -359,7 +360,7 @@ const ExampleTxWindow = `
 	// Time window: 1 week
 	var window = 1000* 3600*24*7;
 
-	// Limit : 1 czz
+	// Limit : 1 ether
 	var limit = new BigNumber("1e18");
 
 	function isLimitOk(transaction){
@@ -432,15 +433,15 @@ func dummyTx(value hexutil.Big) *core.SignTxRequest {
 	gasPrice := hexutil.Big(*big.NewInt(2000000))
 
 	return &core.SignTxRequest{
-		Transaction: core.SendTxArgs{
+		Transaction: apitypes.SendTxArgs{
 			From:     *from,
 			To:       to,
 			Value:    value,
 			Nonce:    n,
-			GasPrice: gasPrice,
+			GasPrice: &gasPrice,
 			Gas:      gas,
 		},
-		Callinfo: []core.ValidationInfo{
+		Callinfo: []apitypes.ValidationInfo{
 			{Typ: "Warning", Message: "All your base are bellong to us"},
 		},
 		Meta: core.Metadata{Remote: "remoteip", Local: "localip", Scheme: "inproc"},
@@ -467,7 +468,7 @@ func TestLimitWindow(t *testing.T) {
 		t.Errorf("Couldn't create evaluator %v", err)
 		return
 	}
-	// 0.3 czz: 429D069189E0000 wei
+	// 0.3 ether: 429D069189E0000 wei
 	v := big.NewInt(0).SetBytes(common.Hex2Bytes("0429D069189E0000"))
 	h := hexutil.Big(*v)
 	// The first three should succeed

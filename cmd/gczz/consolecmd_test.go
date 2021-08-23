@@ -38,13 +38,13 @@ const (
 // spawns gczz with the given command line args, using a set of flags to minimise
 // memory and disk IO. If the args don't set --datadir, the
 // child g gets a temporary data directory.
-func runMinimalGeth(t *testing.T, args ...string) *testgeth {
+func runMinimalGczz(t *testing.T, args ...string) *testgczz {
 	// --ropsten to make the 'writing genesis to disk' faster (no accounts)
 	// --networkid=1337 to avoid cache bump
 	// --syncmode=full to avoid allocating fast sync bloom
 	allArgs := []string{"--ropsten", "--networkid", "1337", "--syncmode=full", "--port", "0",
 		"--nat", "none", "--nodiscover", "--maxpeers", "0", "--cache", "64"}
-	return runGeth(t, append(allArgs, args...)...)
+	return runGczz(t, append(allArgs, args...)...)
 }
 
 // Tests that a node embedded within a console can be started up properly and
@@ -53,13 +53,13 @@ func TestConsoleWelcome(t *testing.T) {
 	coinbase := "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182"
 
 	// Start a gczz console, make sure it's cleaned up and terminate the console
-	gczz := runMinimalGeth(t, "--miner.etherbase", coinbase, "console")
+	gczz := runMinimalGczz(t, "--miner.etherbase", coinbase, "console")
 
 	// Gather all the infos the welcome message needs to contain
 	gczz.SetTemplateFunc("goos", func() string { return runtime.GOOS })
 	gczz.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	gczz.SetTemplateFunc("gover", runtime.Version)
-	gczz.SetTemplateFunc("gethver", func() string { return params.VersionWithCommit("", "") })
+	gczz.SetTemplateFunc("gczzver", func() string { return params.VersionWithCommit("", "") })
 	gczz.SetTemplateFunc("niltime", func() string {
 		return time.Unix(0, 0).Format("Mon Jan 02 2006 15:04:05 GMT-0700 (MST)")
 	})
@@ -69,7 +69,7 @@ func TestConsoleWelcome(t *testing.T) {
 	gczz.Expect(`
 Welcome to the Gczz JavaScript console!
 
-instance: Gczz/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: Gczz/v{{gczzver}}/{{goos}}-{{goarch}}/{{gover}}
 coinbase: {{.Etherbase}}
 at block: 0 ({{niltime}})
  datadir: {{.Datadir}}
@@ -100,7 +100,7 @@ func TestAttachWelcome(t *testing.T) {
 	p := trulyRandInt(1024, 65533) // Yeah, sometimes this will fail, sorry :P
 	httpPort = strconv.Itoa(p)
 	wsPort = strconv.Itoa(p + 1)
-	gczz := runMinimalGeth(t, "--miner.etherbase", "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182",
+	gczz := runMinimalGczz(t, "--miner.etherbase", "0x8605cdbbdb6d264aa742e77020dcbc58fcdce182",
 		"--ipcpath", ipc,
 		"--http", "--http.port", httpPort,
 		"--ws", "--ws.port", wsPort)
@@ -120,9 +120,9 @@ func TestAttachWelcome(t *testing.T) {
 	})
 }
 
-func testAttachWelcome(t *testing.T, gczz *testgeth, endpoint, apis string) {
+func testAttachWelcome(t *testing.T, gczz *testgczz, endpoint, apis string) {
 	// Attach to a running gczz note and terminate immediately
-	attach := runGeth(t, "attach", endpoint)
+	attach := runGczz(t, "attach", endpoint)
 	defer attach.ExpectExit()
 	attach.CloseStdin()
 
@@ -130,7 +130,7 @@ func testAttachWelcome(t *testing.T, gczz *testgeth, endpoint, apis string) {
 	attach.SetTemplateFunc("goos", func() string { return runtime.GOOS })
 	attach.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	attach.SetTemplateFunc("gover", runtime.Version)
-	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithCommit("", "") })
+	attach.SetTemplateFunc("gczzver", func() string { return params.VersionWithCommit("", "") })
 	attach.SetTemplateFunc("etherbase", func() string { return gczz.Etherbase })
 	attach.SetTemplateFunc("niltime", func() string {
 		return time.Unix(0, 0).Format("Mon Jan 02 2006 15:04:05 GMT-0700 (MST)")
@@ -143,7 +143,7 @@ func testAttachWelcome(t *testing.T, gczz *testgeth, endpoint, apis string) {
 	attach.Expect(`
 Welcome to the Gczz JavaScript console!
 
-instance: Gczz/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+instance: Gczz/v{{gczzver}}/{{goos}}-{{goarch}}/{{gover}}
 coinbase: {{etherbase}}
 at block: 0 ({{niltime}}){{if ipc}}
  datadir: {{datadir}}{{end}}

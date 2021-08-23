@@ -118,12 +118,12 @@ func (ec *Client) getBlock(ctx context.Context, method string, args ...interface
 		return nil, err
 	}
 	// Quick-verify transaction and uncle lists. This mostly helps with debugging the server.
-	//if head.UncleHash == types.EmptyUncleHash && len(body.UncleHashes) > 0 {
-	//	return nil, fmt.Errorf("server returned non-empty uncle list but block header indicates no uncles")
-	//}
-	//if head.UncleHash != types.EmptyUncleHash && len(body.UncleHashes) == 0 {
-	//	return nil, fmt.Errorf("server returned empty uncle list but block header indicates uncles")
-	//}
+	if head.UncleHash == types.EmptyUncleHash && len(body.UncleHashes) > 0 {
+		return nil, fmt.Errorf("server returned non-empty uncle list but block header indicates no uncles")
+	}
+	if head.UncleHash != types.EmptyUncleHash && len(body.UncleHashes) == 0 {
+		return nil, fmt.Errorf("server returned empty uncle list but block header indicates uncles")
+	}
 	if head.TxHash == types.EmptyRootHash && len(body.Transactions) > 0 {
 		return nil, fmt.Errorf("server returned non-empty transaction list but block header indicates no transactions")
 	}
@@ -162,7 +162,7 @@ func (ec *Client) getBlock(ctx context.Context, method string, args ...interface
 		}
 		txs[i] = tx.tx
 	}
-	return types.NewBlockWithHeader(head).WithBody(txs), nil
+	return types.NewBlockWithHeader(head).WithBody(txs, uncles), nil
 }
 
 // HeaderByHash returns the block header with the given hash.
@@ -282,17 +282,6 @@ func (ec *Client) TransactionReceipt(ctx context.Context, txHash common.Hash) (*
 		}
 	}
 	return r, err
-}
-
-func toBlockNumArg(number *big.Int) string {
-	if number == nil {
-		return "latest"
-	}
-	pending := big.NewInt(-1)
-	if number.Cmp(pending) == 0 {
-		return "pending"
-	}
-	return hexutil.EncodeBig(number)
 }
 
 type rpcProgress struct {
@@ -462,8 +451,6 @@ func (ec *Client) PendingTransactionCount(ctx context.Context) (uint, error) {
 	return uint(num), err
 }
 
-// TODO: SubscribePendingTransactions (needs server side)
-
 // Contract Calling
 
 // CallContract executes a message call transaction, which is directly executed in the VM
@@ -502,6 +489,16 @@ func (ec *Client) SuggestGasPrice(ctx context.Context) (*big.Int, error) {
 	return (*big.Int)(&hex), nil
 }
 
+// SuggestGasTipCap retrieves the currently suggested gas tip cap after 1559 to
+// allow a timely execution of a transaction.
+func (ec *Client) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	var hex hexutil.Big
+	if err := ec.c.CallContext(ctx, &hex, "eth_maxPriorityFeePerGas"); err != nil {
+		return nil, err
+	}
+	return (*big.Int)(&hex), nil
+}
+
 // EstimateGas tries to estimate the gas needed to execute a specific transaction based on
 // the current pending state of the backend blockchain. There is no guarantee that this is
 // the true gas limit requirement as other transactions may be added or removed by miners,
@@ -527,6 +524,17 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	return ec.c.CallContext(ctx, nil, "eth_sendRawTransaction", hexutil.Encode(data))
 }
 
+func toBlockNumArg(number *big.Int) string {
+	if number == nil {
+		return "latest"
+	}
+	pending := big.NewInt(-1)
+	if number.Cmp(pending) == 0 {
+		return "pending"
+	}
+	return hexutil.EncodeBig(number)
+}
+
 func toCallArg(msg classzz.CallMsg) interface{} {
 	arg := map[string]interface{}{
 		"from": msg.From,
@@ -545,34 +553,4 @@ func toCallArg(msg classzz.CallMsg) interface{} {
 		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
 	}
 	return arg
-}
-
-//czz_pubkey
-func (ec *Client) Pubkey(ctx context.Context) (string, error) {
-	var result string
-	err := ec.c.CallContext(ctx, &result, "czz_pubkey", nil)
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//tewaka_getPledgeInfo
-func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, number *big.Int) ([]*types.Pledge, error) {
-	var result []*types.Pledge
-	err := ec.c.CallContext(ctx, &result, "tewaka_getPledgeInfo", account, toBlockNumArg(number))
-	if err != nil {
-		return result, err
-	}
-	return result, nil
-}
-
-//tewaka_getConvertItem
-func (ec *Client) GetConvertItem(ctx context.Context) ([]*types.ConvertItem, error) {
-	var result []*types.ConvertItem
-	err := ec.c.CallContext(ctx, &result, "tewaka_getConvertItems")
-	if err != nil {
-		return result, err
-	}
-	return result, nil
 }

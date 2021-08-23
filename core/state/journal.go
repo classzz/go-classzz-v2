@@ -112,11 +112,6 @@ type (
 		account       *common.Address
 		key, prevalue common.Hash
 	}
-	teWakaStorageChange struct {
-		account  *common.Address
-		key      common.Hash
-		prevalue []byte
-	}
 	codeChange struct {
 		account            *common.Address
 		prevcode, prevhash []byte
@@ -215,14 +210,6 @@ func (ch storageChange) revert(s *StateDB) {
 }
 
 func (ch storageChange) dirtied() *common.Address {
-	return ch.account
-}
-
-func (ch teWakaStorageChange) revert(s *StateDB) {
-	s.getStateObject(*ch.account).setStateByteArray(ch.key, ch.prevalue)
-}
-
-func (ch teWakaStorageChange) dirtied() *common.Address {
 	return ch.account
 }
 

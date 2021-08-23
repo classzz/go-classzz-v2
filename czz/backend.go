@@ -41,7 +41,7 @@ import (
 	"github.com/classzz/go-classzz-v2/czz/downloader"
 	"github.com/classzz/go-classzz-v2/czz/filters"
 	"github.com/classzz/go-classzz-v2/czz/gasprice"
-	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
+	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/event"
@@ -102,7 +102,7 @@ type Classzz struct {
 func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 	// Ensure configuration values are compatible and sane
 	if config.SyncMode == downloader.LightSync {
-		return nil, errors.New("can't run czz.Classzz in light sync mode, use les.LightClasszz")
+		return nil, errors.New("can't run Classzz in light sync mode, use les.lightClasszz")
 	}
 	if !config.SyncMode.IsValid() {
 		return nil, fmt.Errorf("invalid sync mode %d", config.SyncMode)
@@ -131,15 +131,10 @@ func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 	if err != nil {
 		return nil, err
 	}
-	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis)
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlockWithOverride(chainDb, config.Genesis, config.OverrideLondon)
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
-
-	if chainConfig, err = core.CommitClient(config.EthClient, config.HecoClient, config.BscClient, config.OkexClient, chainConfig); err != nil {
-		return nil, err
-	}
-
 	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	if err := pruner.RecoverPruning(stack.ResolvePath(""), chainDb, stack.ResolvePath(config.TrieCleanCacheJournal)); err != nil {
@@ -180,8 +175,6 @@ func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 	var (
 		vmConfig = vm.Config{
 			EnablePreimageRecording: config.EnablePreimageRecording,
-			EWASMInterpreter:        config.EWASMInterpreter,
-			EVMInterpreter:          config.EVMInterpreter,
 		}
 		cacheConfig = &core.CacheConfig{
 			TrieCleanLimit:      config.TrieCleanCache,
@@ -521,7 +514,7 @@ func (s *Classzz) BloomIndexer() *core.ChainIndexer   { return s.bloomIndexer }
 // Protocols returns all the currently configured
 // network protocols to start.
 func (s *Classzz) Protocols() []p2p.Protocol {
-	protos := czz.MakeProtocols((*ethHandler)(s.handler), s.networkID, s.ethDialCandidates)
+	protos := eth.MakeProtocols((*ethHandler)(s.handler), s.networkID, s.ethDialCandidates)
 	if s.config.SnapshotCache > 0 {
 		protos = append(protos, snap.MakeProtocols((*snapHandler)(s.handler), s.snapDialCandidates)...)
 	}
@@ -531,7 +524,7 @@ func (s *Classzz) Protocols() []p2p.Protocol {
 // Start implements node.Lifecycle, starting all internal goroutines needed by the
 // Classzz protocol implementation.
 func (s *Classzz) Start() error {
-	czz.StartENRUpdater(s.blockchain, s.p2pServer.LocalNode())
+	eth.StartENRUpdater(s.blockchain, s.p2pServer.LocalNode())
 
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
