@@ -73,7 +73,7 @@ func TestCalcDifficulty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config := &params.ChainConfig{HomesteadBlock: big.NewInt(1150000)}
+	config := &params.ChainConfig{}
 
 	for name, test := range tests {
 		number := new(big.Int).Sub(test.CurrentBlocknumber, big.NewInt(1))
@@ -114,7 +114,7 @@ func TestDifficultyCalculators(t *testing.T) {
 			Time:       rand.Uint64() - timeDelta,
 		}
 		if rand.Uint32()&1 == 0 {
-			header.UncleHash = types.EmptyUncleHash
+			//header.UncleHash = types.EmptyUncleHash
 		}
 		bombDelay := new(big.Int).SetUint64(rand.Uint64() % 50_000_000)
 		for i, pair := range []struct {
@@ -122,7 +122,6 @@ func TestDifficultyCalculators(t *testing.T) {
 			u256Fn func(time uint64, parent *types.Header) *big.Int
 		}{
 			{FrontierDifficultyCalulator, CalcDifficultyFrontierU256},
-			{HomesteadDifficultyCalulator, CalcDifficultyHomesteadU256},
 			{DynamicDifficultyCalculator(bombDelay), MakeDifficultyCalculatorU256(bombDelay)},
 		} {
 			time := header.Time + timeDelta
@@ -144,7 +143,7 @@ func BenchmarkDifficultyCalculator(b *testing.B) {
 	x2 := MakeDifficultyCalculatorU256(big.NewInt(1000000))
 	h := &types.Header{
 		ParentHash: common.Hash{},
-		UncleHash:  types.EmptyUncleHash,
+		//UncleHash:  types.EmptyUncleHash,
 		Difficulty: big.NewInt(0xffffff),
 		Number:     big.NewInt(500000),
 		Time:       1000000,
@@ -159,18 +158,6 @@ func BenchmarkDifficultyCalculator(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
 			CalcDifficultyFrontierU256(1000014, h)
-		}
-	})
-	b.Run("big-homestead", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			calcDifficultyHomestead(1000014, h)
-		}
-	})
-	b.Run("u256-homestead", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			CalcDifficultyHomesteadU256(1000014, h)
 		}
 	})
 	b.Run("big-generic", func(b *testing.B) {

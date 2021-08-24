@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	crand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"math"
@@ -48,7 +49,7 @@ var (
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}) error {
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
@@ -62,7 +63,7 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	}
 	// If we're running a shared PoW, delegate sealing to it
 	if ethash.shared != nil {
-		return ethash.shared.Seal(chain, block, results, stop)
+		return ethash.shared.Seal(chain, block, factor, results, stop)
 	}
 	// Create a runner and the multiple search threads it directs
 	abort := make(chan struct{})
@@ -92,11 +93,12 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		pend   sync.WaitGroup
 		locals = make(chan *types.Block)
 	)
+
 	for i := 0; i < threads; i++ {
 		pend.Add(1)
 		go func(id int, nonce uint64) {
 			defer pend.Done()
-			ethash.mine(block, id, nonce, abort, locals)
+			ethash.mine(block, factor, id, nonce, abort, locals)
 		}(i, uint64(ethash.rand.Int63()))
 	}
 	// Wait until sealing is terminated or a nonce is found
@@ -117,7 +119,7 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		case <-ethash.update:
 			// Thread count was changed on user request, restart
 			close(abort)
-			if err := ethash.Seal(chain, block, results, stop); err != nil {
+			if err := ethash.Seal(chain, block, factor, results, stop); err != nil {
 				ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
 			}
 		}
@@ -129,20 +131,20 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 
 // mine is the actual proof-of-work miner that searches for a nonce starting from
 // seed that results in correct final block difficulty.
-func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
+func (ethash *Ethash) mine(block *types.Block, factor *big.Int, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
 	// Extract some data from the header
 	var (
-		header  = block.Header()
-		hash    = ethash.SealHash(header).Bytes()
-		target  = new(big.Int).Div(two256, header.Difficulty)
-		number  = header.Number.Uint64()
-		dataset = ethash.dataset(number, false)
+		header = block.Header()
+		hash   = ethash.SealHash(header).Bytes()
+		target = new(big.Int).Div(two256, header.Difficulty)
 	)
+	if factor != nil && factor.Sign() > 0 {
+		target = new(big.Int).Div(target, factor)
+	}
 	// Start generating random nonces until we abort or find a good one
 	var (
-		attempts  = int64(0)
-		nonce     = seed
-		powBuffer = new(big.Int)
+		attempts = int64(0)
+		nonce    = seed
 	)
 	logger := ethash.config.Log.New("miner", id)
 	logger.Trace("Started ethash search for new nonces", "seed", seed)
@@ -163,13 +165,13 @@ search:
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce
-			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
-			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
+			result := HashCZZ(hash, nonce)
+			logger.Trace("hashczz", "result", hex.EncodeToString(result), "target", hex.EncodeToString(target.Bytes()))
+			if new(big.Int).SetBytes(result).Cmp(target) <= 0 {
 				// Correct nonce found, create a new header with it
 				header = types.CopyHeader(header)
 				header.Nonce = types.EncodeNonce(nonce)
-				header.MixDigest = common.BytesToHash(digest)
-
+				header.MixDigest = common.BytesToHash(result)
 				// Seal and return a block (if still needed)
 				select {
 				case found <- block.WithSeal(header):
@@ -182,9 +184,6 @@ search:
 			nonce++
 		}
 	}
-	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
-	// during sealing so it's not unmapped while being read.
-	runtime.KeepAlive(dataset)
 }
 
 // This is the timeout for HTTP requests to notify external miners.
@@ -346,7 +345,6 @@ func (s *remoteSealer) loop() {
 func (s *remoteSealer) makeWork(block *types.Block) {
 	hash := s.ethash.SealHash(block.Header())
 	s.currentWork[0] = hash.Hex()
-	s.currentWork[1] = common.BytesToHash(SeedHash(block.NumberU64())).Hex()
 	s.currentWork[2] = common.BytesToHash(new(big.Int).Div(two256, block.Difficulty()).Bytes()).Hex()
 	s.currentWork[3] = hexutil.EncodeBig(block.Number())
 
@@ -417,12 +415,12 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, mixDigest common.Hash,
 	header.MixDigest = mixDigest
 
 	start := time.Now()
-	if !s.noverify {
-		if err := s.ethash.verifySeal(nil, header, true); err != nil {
-			s.ethash.config.Log.Warn("Invalid proof-of-work submitted", "sealhash", sealhash, "elapsed", common.PrettyDuration(time.Since(start)), "err", err)
-			return false
-		}
-	}
+	//if !s.noverify {
+	//	if err := s.ethash.verifySeal(nil, header); err != nil {
+	//		s.ethash.config.Log.Warn("Invalid proof-of-work submitted", "sealhash", sealhash, "elapsed", common.PrettyDuration(time.Since(start)), "err", err)
+	//		return false
+	//	}
+	//}
 	// Make sure the result channel is assigned.
 	if s.results == nil {
 		s.ethash.config.Log.Warn("Ethash result channel is empty, submitted mining result is rejected")

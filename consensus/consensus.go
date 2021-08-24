@@ -18,6 +18,8 @@
 package consensus
 
 import (
+	"github.com/classzz/go-classzz-v2/core/vm"
+	"github.com/classzz/go-classzz-v2/log"
 	"math/big"
 
 	"github.com/classzz/go-classzz-v2/common"
@@ -75,7 +77,7 @@ type Engine interface {
 
 	// VerifyUncles verifies that the given block's uncles conform to the consensus
 	// rules of a given engine.
-	VerifyUncles(chain ChainReader, block *types.Block) error
+	//VerifyUncles(chain ChainReader, block *types.Block) error
 
 	// Prepare initializes the consensus fields of a block header according to the
 	// rules of a particular engine. The changes are executed inline.
@@ -123,4 +125,35 @@ type PoW interface {
 
 	// Hashrate returns the current mining hashrate of a PoW consensus engine.
 	Hashrate() float64
+}
+
+var (
+	oneMillion = new(big.Int).Mul(big.NewInt(1000000), big.NewInt(1e18))
+)
+
+func MakeFactorForMine(amount *big.Int) *big.Int {
+	if amount == nil || amount.Sign() <= 0 || amount.Cmp(oneMillion) < 0 {
+		return nil
+	}
+	factor := new(big.Int).Div(amount, oneMillion)
+	factor = factor.Mul(factor, big.NewInt(10)) // 10
+	return factor
+}
+
+func makeImpawInitState(config *params.ChainConfig, state *state.StateDB) bool {
+	stateAddress := vm.TeWaKaAddress
+	key := common.BytesToHash(stateAddress[:])
+	obj := state.GetTeWakaState(stateAddress, key)
+	if len(obj) == 0 {
+		i := vm.NewTeWakaImpl()
+		i.Save(state, stateAddress)
+		state.SetNonce(stateAddress, 1)
+		state.SetCode(stateAddress, stateAddress[:])
+		log.Info("makeTeWakaInitState success")
+		return true
+	}
+	return false
+}
+func OnceInitImpawnState(config *params.ChainConfig, state *state.StateDB) bool {
+	return makeImpawInitState(config, state)
 }
