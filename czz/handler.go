@@ -18,6 +18,7 @@ package czz
 
 import (
 	"errors"
+	"github.com/classzz/go-classzz-v2/consensus"
 	"math"
 	"math/big"
 	"sync"
@@ -30,7 +31,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
 	"github.com/classzz/go-classzz-v2/czz/fetcher"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/event"
@@ -188,7 +189,9 @@ func newHandler(config *handlerConfig) (*handler, error) {
 
 	// Construct the fetcher (short sync)
 	validator := func(header *types.Header) error {
-		return h.chain.Engine().VerifyHeader(h.chain, header, true)
+		amount, _ := h.chain.GetCurrentStakingByUser(header.Coinbase)
+		factor := consensus.MakeFactorForMine(amount)
+		return h.chain.Engine().VerifyHeader(h.chain, header, true, factor)
 	}
 	heighter := func() uint64 {
 		return h.chain.CurrentBlock().NumberU64()

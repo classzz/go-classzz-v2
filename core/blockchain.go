@@ -341,7 +341,9 @@ func NewBlockChain(db czzdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	// The first thing the node will do is reconstruct the verification data for
 	// the head block (ethash cache or clique voting snapshot). Might as well do
 	// it in advance.
-	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true)
+	amount, _ := bc.GetCurrentStakingByUser(bc.CurrentHeader().Coinbase)
+	factor := consensus.MakeFactorForMine(amount)
+	bc.engine.VerifyHeader(bc, bc.CurrentHeader(), true, factor)
 
 	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
 	for hash := range BadHashes {
@@ -1472,7 +1474,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 		log.Crit("Failed to write block into disk", "err", err)
 	}
 	// Commit all cached state changes into underlying memory database.
-	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
+	root, err := state.Commit(true)
 	if err != nil {
 		return NonStatTy, err
 	}
@@ -1683,12 +1685,16 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	// Start the parallel header verifier
 	headers := make([]*types.Header, len(chain))
 	seals := make([]bool, len(chain))
+	factors := make([]*big.Int, len(chain))
 
 	for i, block := range chain {
 		headers[i] = block.Header()
 		seals[i] = verifySeals
+		amount, _ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
+		factor := consensus.MakeFactorForMine(amount)
+		factors[i] = factor
 	}
-	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
+	abort, results := bc.engine.VerifyHeaders(bc, headers, seals, factors)
 	defer close(abort)
 
 	// Peek the error for the first block to decide the directing import logic
@@ -2516,4 +2522,15 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 // block processing has started while false means it has stopped.
 func (bc *BlockChain) SubscribeBlockProcessingEvent(ch chan<- bool) event.Subscription {
 	return bc.scope.Track(bc.blockProcFeed.Subscribe(ch))
+}
+
+func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int, error) {
+	// maybe get cache on here
+	i := vm.NewTeWakaImpl()
+	state, err := bc.State()
+	if err != nil {
+		i.Load(state, vm.TeWaKaAddress)
+		return i.GetStakingByUser(address), nil
+	}
+	return nil, nil
 }

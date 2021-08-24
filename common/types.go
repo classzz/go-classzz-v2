@@ -23,6 +23,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/classzz/go-classzz-v2/log"
+	"github.com/classzz/go-classzz-v2/rlp"
 	"math/big"
 	"math/rand"
 	"reflect"
@@ -53,6 +55,15 @@ type Hash [HashLength]byte
 func BytesToHash(b []byte) Hash {
 	var h Hash
 	h.SetBytes(b)
+	return h
+}
+
+func RlpHash(x interface{}) (h Hash) {
+	hw := sha3.NewLegacyKeccak256()
+	if e := rlp.Encode(hw, x); e != nil {
+		log.Warn("RlpHash", "error", e.Error())
+	}
+	hw.Sum(h[:0])
 	return h
 }
 

@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
+	"github.com/classzz/go-classzz-v2/accounts/abi"
 	"math/big"
 
 	"github.com/classzz/go-classzz-v2/common"
