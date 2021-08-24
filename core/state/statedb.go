@@ -20,6 +20,7 @@ package state
 import (
 	"errors"
 	"fmt"
+	"github.com/classzz/go-classzz-v2/core/vm"
 	"math/big"
 	"sort"
 	"time"
@@ -54,6 +55,11 @@ func (n *proofList) Put(key []byte, value []byte) error {
 
 func (n *proofList) Delete(key []byte) error {
 	panic("not supported")
+}
+
+func lockedKey(addr common.Address) (h common.Hash) {
+	base := append(common.BytesToHash(addr[:]).Bytes(), lockedPosition.Bytes()...)
+	return crypto.Keccak256Hash(base)
 }
 
 // StateDB structs within the classzz protocol are used to store anything
@@ -308,6 +314,19 @@ func (s *StateDB) GetState(addr common.Address, hash common.Hash) common.Hash {
 	return common.Hash{}
 }
 
+func (s *StateDB) GetTeWakaState(addr common.Address, hash common.Hash) []byte {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		return stateObject.GetTeWakaState(s.db, hash)
+	}
+	return nil
+}
+
+func (self *StateDB) GetTeWakaStateLocked(addr common.Address) *big.Int {
+	key := lockedKey(addr)
+	return self.GetState(vm.TeWaKaAddress, key).Big()
+}
+
 // GetProof returns the Merkle proof for a given account.
 func (s *StateDB) GetProof(addr common.Address) ([][]byte, error) {
 	return s.GetProofByHash(crypto.Keccak256Hash(addr.Bytes()))
@@ -410,6 +429,13 @@ func (s *StateDB) SetState(addr common.Address, key, value common.Hash) {
 	stateObject := s.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetState(s.db, key, value)
+	}
+}
+
+func (s *StateDB) SetTeWakaState(addr common.Address, key common.Hash, value []byte) {
+	stateObject := s.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetTeWakaState(s.db, key, value)
 	}
 }
 
@@ -640,6 +666,28 @@ func (db *StateDB) ForEachStorage(addr common.Address, cb func(key, value common
 		}
 	}
 	return nil
+}
+
+// ForEachTeWakaStorage is callback function. cb return true indicating like to continue, return false indicating stop
+func (self *StateDB) ForEachTeWakaStorage(addr common.Address, cb func(key common.Hash, value []byte) bool) {
+	stateObject := self.getStateObject(addr)
+	if stateObject == nil {
+		return
+	}
+	it := trie.NewIterator(stateObject.getTrie(self.db).NodeIterator(nil))
+	for it.Next() {
+		// ignore cached values
+		key := common.BytesToHash(self.trie.GetKey(it.Key))
+		if value, dirty := stateObject.originTeWakaStorage[key]; dirty {
+			if !cb(key, value) {
+				return
+			}
+			continue
+		}
+		if !cb(key, it.Value) {
+			return
+		}
+	}
 }
 
 // Copy creates a deep, independent copy of the state.
@@ -1027,4 +1075,14 @@ func (s *StateDB) AddressInAccessList(addr common.Address) bool {
 // SlotInAccessList returns true if the given (address, slot)-tuple is in the access list.
 func (s *StateDB) SlotInAccessList(addr common.Address, slot common.Hash) (addressPresent bool, slotPresent bool) {
 	return s.accessList.Contains(addr, slot)
+}
+
+func (s *StateDB) HasRecord(atype uint64, hash common.Hash) bool {
+	return rawdb.HasRecord(s.db.TrieDB().DiskDB(), atype, hash)
+}
+func (s *StateDB) WriteRecord(atype uint64, hash common.Hash) {
+	rawdb.WriteRecord(s.db.TrieDB().DiskDB(), atype, hash)
+}
+func (s *StateDB) DeleteRecord(atype uint64, hash common.Hash) {
+	rawdb.DeleteRecord(s.db.TrieDB().DiskDB(), atype, hash)
 }

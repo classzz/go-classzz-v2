@@ -92,6 +92,7 @@ var (
 
 	preimagePrefix = []byte("secure-key-")     // preimagePrefix + hash -> preimage
 	configPrefix   = []byte("classzz-config-") // config prefix for the db
+	recordPrefix   = []byte("czz-record-")
 
 	// Chain index prefixes (use `i` + single byte to avoid mixing data types).
 	BloomBitsIndexPrefix = []byte("iB") // BloomBitsIndexPrefix is the data table of a chain indexer to track its progress
@@ -140,6 +141,11 @@ func encodeBlockNumber(number uint64) []byte {
 	enc := make([]byte, 8)
 	binary.BigEndian.PutUint64(enc, number)
 	return enc
+}
+
+// recordKey = recordPrefix + num (uint64 big endian) + hash
+func recordKeyPrefix(num uint64, hash common.Hash) []byte {
+	return append(append(recordPrefix, encodeBlockNumber(num)...), hash.Bytes()...)
 }
 
 // headerKeyPrefix = headerPrefix + num (uint64 big endian)
