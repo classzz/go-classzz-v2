@@ -41,7 +41,7 @@ import (
 	"github.com/classzz/go-classzz-v2/czz/downloader"
 	"github.com/classzz/go-classzz-v2/czz/filters"
 	"github.com/classzz/go-classzz-v2/czz/gasprice"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/event"
