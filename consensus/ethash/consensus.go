@@ -33,7 +33,6 @@ import (
 	"github.com/classzz/go-classzz-v2/params"
 	"github.com/classzz/go-classzz-v2/rlp"
 	"github.com/classzz/go-classzz-v2/trie"
-	mapset "github.com/deckarep/golang-set"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -197,14 +196,15 @@ func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Blo
 		return nil
 	}
 	// Verify that there are at most 2 uncles included in this block
-	if len(block.Uncles()) > maxUncles {
-		return errTooManyUncles
-	}
-	if len(block.Uncles()) == 0 {
-		return nil
-	}
+	//if len(block.Uncles()) > maxUncles {
+	//	return errTooManyUncles
+	//}
+	//if len(block.Uncles()) == 0 {
+	//	return nil
+	//}
 	// Gather the set of past uncles and ancestors
-	uncles, ancestors := mapset.NewSet(), make(map[common.Hash]*types.Header)
+	//uncles, ancestors := mapset.NewSet(), make(map[common.Hash]*types.Header)
+	ancestors := make(map[common.Hash]*types.Header)
 
 	number, parent := block.NumberU64()-1, block.ParentHash()
 	for i := 0; i < 7; i++ {
@@ -214,41 +214,41 @@ func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Blo
 		}
 		ancestors[parent] = ancestorHeader
 		// If the ancestor doesn't have any uncles, we don't have to iterate them
-		if ancestorHeader.UncleHash != types.EmptyUncleHash {
-			// Need to add those uncles to the banned list too
-			ancestor := chain.GetBlock(parent, number)
-			if ancestor == nil {
-				break
-			}
-			for _, uncle := range ancestor.Uncles() {
-				uncles.Add(uncle.Hash())
-			}
-		}
+		//if ancestorHeader.UncleHash != types.EmptyUncleHash {
+		//	// Need to add those uncles to the banned list too
+		//	ancestor := chain.GetBlock(parent, number)
+		//	if ancestor == nil {
+		//		break
+		//	}
+		//	for _, uncle := range ancestor.Uncles() {
+		//		uncles.Add(uncle.Hash())
+		//	}
+		//}
 		parent, number = ancestorHeader.ParentHash, number-1
 	}
 	ancestors[block.Hash()] = block.Header()
-	uncles.Add(block.Hash())
+	//uncles.Add(block.Hash())
 
 	// Verify each of the uncles that it's recent, but not an ancestor
-	for _, uncle := range block.Uncles() {
-		// Make sure every uncle is rewarded only once
-		hash := uncle.Hash()
-		if uncles.Contains(hash) {
-			return errDuplicateUncle
-		}
-		uncles.Add(hash)
-
-		// Make sure the uncle has a valid ancestry
-		if ancestors[hash] != nil {
-			return errUncleIsAncestor
-		}
-		if ancestors[uncle.ParentHash] == nil || uncle.ParentHash == block.ParentHash() {
-			return errDanglingUncle
-		}
-		if err := ethash.verifyHeader(chain, uncle, ancestors[uncle.ParentHash], true, true, time.Now().Unix()); err != nil {
-			return err
-		}
-	}
+	//for _, uncle := range block.Uncles() {
+	//	// Make sure every uncle is rewarded only once
+	//	hash := uncle.Hash()
+	//	//if uncles.Contains(hash) {
+	//	//	return errDuplicateUncle
+	//	//}
+	//	//uncles.Add(hash)
+	//
+	//	// Make sure the uncle has a valid ancestry
+	//	if ancestors[hash] != nil {
+	//		return errUncleIsAncestor
+	//	}
+	//	if ancestors[uncle.ParentHash] == nil || uncle.ParentHash == block.ParentHash() {
+	//		return errDanglingUncle
+	//	}
+	//	if err := ethash.verifyHeader(chain, uncle, ancestors[uncle.ParentHash], true, true, time.Now().Unix()); err != nil {
+	//		return err
+	//	}
+	//}
 	return nil
 }
 
@@ -311,9 +311,9 @@ func (ethash *Ethash) verifyHeader(chain consensus.ChainHeaderReader, header, pa
 	if err := misc.VerifyDAOHeaderExtraData(chain.Config(), header); err != nil {
 		return err
 	}
-	if err := misc.VerifyForkHashes(chain.Config(), header, uncle); err != nil {
-		return err
-	}
+	//if err := misc.VerifyForkHashes(chain.Config(), header, uncle); err != nil {
+	//	return err
+	//}
 	return nil
 }
 
@@ -381,11 +381,11 @@ func makeDifficultyCalculator(bombDelay *big.Int) func(time uint64, parent *type
 		// (2 if len(parent_uncles) else 1) - (block_timestamp - parent_timestamp) // 9
 		x.Sub(bigTime, bigParentTime)
 		x.Div(x, big9)
-		if parent.UncleHash == types.EmptyUncleHash {
-			x.Sub(big1, x)
-		} else {
-			x.Sub(big2, x)
-		}
+		//if parent.UncleHash == types.EmptyUncleHash {
+		x.Sub(big1, x)
+		//} else {
+		//	x.Sub(big2, x)
+		//}
 		// max((2 if len(parent_uncles) else 1) - (block_timestamp - parent_timestamp) // 9, -99)
 		if x.Cmp(bigMinus99) < 0 {
 			x.Set(bigMinus99)
@@ -608,7 +608,7 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
 
 	enc := []interface{}{
 		header.ParentHash,
-		header.UncleHash,
+		//header.UncleHash,
 		header.Coinbase,
 		header.Root,
 		header.TxHash,

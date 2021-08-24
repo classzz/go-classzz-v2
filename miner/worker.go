@@ -673,14 +673,14 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 		state:     state,
 		ancestors: mapset.NewSet(),
 		family:    mapset.NewSet(),
-		uncles:    mapset.NewSet(),
-		header:    header,
+		//uncles:    mapset.NewSet(),
+		header: header,
 	}
 	// when 08 is processed ancestors contain 07 (quick block)
 	for _, ancestor := range w.chain.GetBlocksFromHash(parent.Hash(), 7) {
-		for _, uncle := range ancestor.Uncles() {
-			env.family.Add(uncle.Hash())
-		}
+		//for _, uncle := range ancestor.Uncles() {
+		//	env.family.Add(uncle.Hash())
+		//}
 		env.family.Add(ancestor.Hash())
 		env.ancestors.Add(ancestor.Hash())
 	}
@@ -1018,7 +1018,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := copyReceipts(w.current.receipts)
 	s := w.current.state.Copy()
-	block, err := w.engine.FinalizeAndAssemble(w.chain, w.current.header, s, w.current.txs, uncles, receipts)
+	block, err := w.engine.FinalizeAndAssemble(w.chain, w.current.header, s, w.current.txs, receipts)
 	if err != nil {
 		return err
 	}

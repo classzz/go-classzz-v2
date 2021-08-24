@@ -109,14 +109,14 @@ func (set *unconfirmedBlocks) Shift(height uint64) {
 			// Block is not canonical, check whether we have an uncle or a lost block
 			included := false
 			for number := next.index; !included && number < next.index+uint64(set.depth) && number <= height; number++ {
-				if block := set.chain.GetBlockByNumber(number); block != nil {
-					for _, uncle := range block.Uncles() {
-						if uncle.Hash() == next.hash {
-							included = true
-							break
-						}
-					}
-				}
+				//if block := set.chain.GetBlockByNumber(number); block != nil {
+				//for _, uncle := range block.Uncles() {
+				//	if uncle.Hash() == next.hash {
+				//		included = true
+				//		break
+				//	}
+				//}
+				//}
 			}
 			if included {
 				log.Info("⑂ block became an uncle", "number", next.index, "hash", next.hash)

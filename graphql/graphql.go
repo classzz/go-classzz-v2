@@ -670,39 +670,39 @@ func (b *Block) ReceiptsRoot(ctx context.Context) (common.Hash, error) {
 	return header.ReceiptHash, nil
 }
 
-func (b *Block) OmmerHash(ctx context.Context) (common.Hash, error) {
-	header, err := b.resolveHeader(ctx)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return header.UncleHash, nil
-}
+//func (b *Block) OmmerHash(ctx context.Context) (common.Hash, error) {
+//	header, err := b.resolveHeader(ctx)
+//	if err != nil {
+//		return common.Hash{}, err
+//	}
+//	return header.UncleHash, nil
+//}
 
-func (b *Block) OmmerCount(ctx context.Context) (*int32, error) {
-	block, err := b.resolve(ctx)
-	if err != nil || block == nil {
-		return nil, err
-	}
-	count := int32(len(block.Uncles()))
-	return &count, err
-}
+//func (b *Block) OmmerCount(ctx context.Context) (*int32, error) {
+//	block, err := b.resolve(ctx)
+//	if err != nil || block == nil {
+//		return nil, err
+//	}
+//	count := int32(len(block.Uncles()))
+//	return &count, err
+//}
 
-func (b *Block) Ommers(ctx context.Context) (*[]*Block, error) {
-	block, err := b.resolve(ctx)
-	if err != nil || block == nil {
-		return nil, err
-	}
-	ret := make([]*Block, 0, len(block.Uncles()))
-	for _, uncle := range block.Uncles() {
-		blockNumberOrHash := rpc.BlockNumberOrHashWithHash(uncle.Hash(), false)
-		ret = append(ret, &Block{
-			backend:      b.backend,
-			numberOrHash: &blockNumberOrHash,
-			header:       uncle,
-		})
-	}
-	return &ret, nil
-}
+//func (b *Block) Ommers(ctx context.Context) (*[]*Block, error) {
+//	block, err := b.resolve(ctx)
+//	if err != nil || block == nil {
+//		return nil, err
+//	}
+//	ret := make([]*Block, 0, len(block.Uncles()))
+//	for _, uncle := range block.Uncles() {
+//		blockNumberOrHash := rpc.BlockNumberOrHashWithHash(uncle.Hash(), false)
+//		ret = append(ret, &Block{
+//			backend:      b.backend,
+//			numberOrHash: &blockNumberOrHash,
+//			header:       uncle,
+//		})
+//	}
+//	return &ret, nil
+//}
 
 func (b *Block) ExtraData(ctx context.Context) (hexutil.Bytes, error) {
 	header, err := b.resolveHeader(ctx)
@@ -818,23 +818,23 @@ func (b *Block) TransactionAt(ctx context.Context, args struct{ Index int32 }) (
 	}, nil
 }
 
-func (b *Block) OmmerAt(ctx context.Context, args struct{ Index int32 }) (*Block, error) {
-	block, err := b.resolve(ctx)
-	if err != nil || block == nil {
-		return nil, err
-	}
-	uncles := block.Uncles()
-	if args.Index < 0 || int(args.Index) >= len(uncles) {
-		return nil, nil
-	}
-	uncle := uncles[args.Index]
-	blockNumberOrHash := rpc.BlockNumberOrHashWithHash(uncle.Hash(), false)
-	return &Block{
-		backend:      b.backend,
-		numberOrHash: &blockNumberOrHash,
-		header:       uncle,
-	}, nil
-}
+//func (b *Block) OmmerAt(ctx context.Context, args struct{ Index int32 }) (*Block, error) {
+//	block, err := b.resolve(ctx)
+//	if err != nil || block == nil {
+//		return nil, err
+//	}
+//	uncles := block.Uncles()
+//	if args.Index < 0 || int(args.Index) >= len(uncles) {
+//		return nil, nil
+//	}
+//	uncle := uncles[args.Index]
+//	blockNumberOrHash := rpc.BlockNumberOrHashWithHash(uncle.Hash(), false)
+//	return &Block{
+//		backend:      b.backend,
+//		numberOrHash: &blockNumberOrHash,
+//		header:       uncle,
+//	}, nil
+//}
 
 // BlockFilterCriteria encapsulates criteria passed to a `logs` accessor inside
 // a block.
