@@ -42,7 +42,7 @@ type BlockGen struct {
 	gasPool  *GasPool
 	txs      []*types.Transaction
 	receipts []*types.Receipt
-	uncles   []*types.Header
+	//uncles   []*types.Header
 
 	config *params.ChainConfig
 	engine consensus.Engine
@@ -154,9 +154,9 @@ func (b *BlockGen) TxNonce(addr common.Address) uint64 {
 }
 
 // AddUncle adds an uncle header to the generated block.
-func (b *BlockGen) AddUncle(h *types.Header) {
-	b.uncles = append(b.uncles, h)
-}
+//func (b *BlockGen) AddUncle(h *types.Header) {
+//	b.uncles = append(b.uncles, h)
+//}
 
 // PrevBlock returns a previously generated block by number. It panics if
 // num is greater or equal to the number of the block being generated.

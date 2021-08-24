@@ -22,7 +22,6 @@ import (
 
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/consensus"
-	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"github.com/classzz/go-classzz-v2/core/state"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/core/vm"
@@ -67,9 +66,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 		gp          = new(GasPool).AddGas(block.GasLimit())
 	)
 	// Mutate the block and state according to any hard-fork specs
-	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
-		misc.ApplyDAOHardFork(statedb)
-	}
+	//if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
+	//	misc.ApplyDAOHardFork(statedb)
+	//}
 	blockContext := NewEVMBlockContext(header, p.bc, nil)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
 	// Iterate over and process the individual transactions
@@ -105,11 +104,11 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 
 	// Update the state with pending changes.
 	var root []byte
-	if config.IsByzantium(blockNumber) {
-		statedb.Finalise(true)
-	} else {
-		root = statedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
-	}
+	//if config.IsByzantium(blockNumber) {
+	statedb.Finalise(true)
+	//} else {
+	//	root = statedb.IntermediateRoot(config.IsEIP158(blockNumber)).Bytes()
+	//}
 	*usedGas += result.UsedGas
 
 	// Create a new receipt for the transaction, storing the intermediate root and gas used

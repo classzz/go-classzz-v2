@@ -26,7 +26,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/rawdb"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/p2p/enode"
 )

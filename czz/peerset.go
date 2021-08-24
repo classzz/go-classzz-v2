@@ -22,7 +22,7 @@ import (
 	"sync"
 
 	"github.com/classzz/go-classzz-v2/common"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/p2p"
 )
@@ -73,7 +73,7 @@ func newPeerSet() *peerSet {
 func (ps *peerSet) registerSnapExtension(peer *snap.Peer) error {
 	// Reject the peer if it advertises `snap` without `czz` as `snap` is only a
 	// satellite protocol meaningful with the chain selection of `czz`
-	if !peer.RunningCap(eth.ProtocolName, eth.ProtocolVersions) {
+	if !peer.RunningCap(czz.ProtocolName, czz.ProtocolVersions) {
 		return errSnapWithoutEth
 	}
 	// Ensure nobody can double connect
@@ -99,7 +99,7 @@ func (ps *peerSet) registerSnapExtension(peer *snap.Peer) error {
 
 // waitExtensions blocks until all satellite protocols are connected and tracked
 // by the peerset.
-func (ps *peerSet) waitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
+func (ps *peerSet) waitSnapExtension(peer *czz.Peer) (*snap.Peer, error) {
 	// If the peer does not support a compatible `snap`, don't wait
 	if !peer.RunningCap(snap.ProtocolName, snap.ProtocolVersions) {
 		return nil, nil
@@ -133,7 +133,7 @@ func (ps *peerSet) waitSnapExtension(peer *eth.Peer) (*snap.Peer, error) {
 
 // registerPeer injects a new `czz` peer into the working set, or returns an error
 // if the peer is already known.
-func (ps *peerSet) registerPeer(peer *eth.Peer, ext *snap.Peer) error {
+func (ps *peerSet) registerPeer(peer *czz.Peer, ext *snap.Peer) error {
 	// Start tracking the new peer
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
@@ -231,12 +231,12 @@ func (ps *peerSet) snapLen() int {
 
 // peerWithHighestTD retrieves the known peer with the currently highest total
 // difficulty.
-func (ps *peerSet) peerWithHighestTD() *eth.Peer {
+func (ps *peerSet) peerWithHighestTD() *czz.Peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 
 	var (
-		bestPeer *eth.Peer
+		bestPeer *czz.Peer
 		bestTd   *big.Int
 	)
 	for _, p := range ps.peers {

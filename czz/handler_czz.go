@@ -26,7 +26,7 @@ import (
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/core"
 	"github.com/classzz/go-classzz-v2/core/types"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/p2p/enode"
 	"github.com/classzz/go-classzz-v2/trie"
@@ -38,10 +38,10 @@ type ethHandler handler
 
 func (h *ethHandler) Chain() *core.BlockChain     { return h.chain }
 func (h *ethHandler) StateBloom() *trie.SyncBloom { return h.stateBloom }
-func (h *ethHandler) TxPool() eth.TxPool          { return h.txpool }
+func (h *ethHandler) TxPool() czz.TxPool          { return h.txpool }
 
 // RunPeer is invoked when a peer joins on the `czz` protocol.
-func (h *ethHandler) RunPeer(peer *eth.Peer, hand eth.Handler) error {
+func (h *ethHandler) RunPeer(peer *czz.Peer, hand czz.Handler) error {
 	return (*handler)(h).runEthPeer(peer, hand)
 }
 
@@ -61,42 +61,42 @@ func (h *ethHandler) AcceptTxs() bool {
 
 // Handle is invoked from a peer's message handler when it receives a new remote
 // message that the handler couldn't consume and serve itself.
-func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
+func (h *ethHandler) Handle(peer *czz.Peer, packet czz.Packet) error {
 	// Consume any broadcasts and announces, forwarding the rest to the downloader
 	switch packet := packet.(type) {
-	case *eth.BlockHeadersPacket:
+	case *czz.BlockHeadersPacket:
 		return h.handleHeaders(peer, *packet)
 
-	case *eth.BlockBodiesPacket:
-		txset, uncleset := packet.Unpack()
-		return h.handleBodies(peer, txset, uncleset)
+	case *czz.BlockBodiesPacket:
+		txset := packet.Unpack()
+		return h.handleBodies(peer, txset)
 
-	case *eth.NodeDataPacket:
+	case *czz.NodeDataPacket:
 		if err := h.downloader.DeliverNodeData(peer.ID(), *packet); err != nil {
 			log.Debug("Failed to deliver node state data", "err", err)
 		}
 		return nil
 
-	case *eth.ReceiptsPacket:
+	case *czz.ReceiptsPacket:
 		if err := h.downloader.DeliverReceipts(peer.ID(), *packet); err != nil {
 			log.Debug("Failed to deliver receipts", "err", err)
 		}
 		return nil
 
-	case *eth.NewBlockHashesPacket:
+	case *czz.NewBlockHashesPacket:
 		hashes, numbers := packet.Unpack()
 		return h.handleBlockAnnounces(peer, hashes, numbers)
 
-	case *eth.NewBlockPacket:
+	case *czz.NewBlockPacket:
 		return h.handleBlockBroadcast(peer, packet.Block, packet.TD)
 
-	case *eth.NewPooledTransactionHashesPacket:
+	case *czz.NewPooledTransactionHashesPacket:
 		return h.txFetcher.Notify(peer.ID(), *packet)
 
-	case *eth.TransactionsPacket:
+	case *czz.TransactionsPacket:
 		return h.txFetcher.Enqueue(peer.ID(), *packet, false)
 
-	case *eth.PooledTransactionsPacket:
+	case *czz.PooledTransactionsPacket:
 		return h.txFetcher.Enqueue(peer.ID(), *packet, true)
 
 	default:
@@ -106,7 +106,7 @@ func (h *ethHandler) Handle(peer *eth.Peer, packet eth.Packet) error {
 
 // handleHeaders is invoked from a peer's message handler when it transmits a batch
 // of headers for the local node to process.
-func (h *ethHandler) handleHeaders(peer *eth.Peer, headers []*types.Header) error {
+func (h *ethHandler) handleHeaders(peer *czz.Peer, headers []*types.Header) error {
 	p := h.peers.peer(peer.ID())
 	if p == nil {
 		return errors.New("unregistered during callback")
@@ -162,14 +162,14 @@ func (h *ethHandler) handleHeaders(peer *eth.Peer, headers []*types.Header) erro
 
 // handleBodies is invoked from a peer's message handler when it transmits a batch
 // of block bodies for the local node to process.
-func (h *ethHandler) handleBodies(peer *eth.Peer, txs [][]*types.Transaction, uncles [][]*types.Header) error {
+func (h *ethHandler) handleBodies(peer *czz.Peer, txs [][]*types.Transaction) error {
 	// Filter out any explicitly requested bodies, deliver the rest to the downloader
-	filter := len(txs) > 0 || len(uncles) > 0
+	filter := len(txs) > 0
 	if filter {
-		txs, uncles = h.blockFetcher.FilterBodies(peer.ID(), txs, uncles, time.Now())
+		txs = h.blockFetcher.FilterBodies(peer.ID(), txs, time.Now())
 	}
-	if len(txs) > 0 || len(uncles) > 0 || !filter {
-		err := h.downloader.DeliverBodies(peer.ID(), txs, uncles)
+	if len(txs) > 0 || !filter {
+		err := h.downloader.DeliverBodies(peer.ID(), txs)
 		if err != nil {
 			log.Debug("Failed to deliver bodies", "err", err)
 		}
@@ -179,7 +179,7 @@ func (h *ethHandler) handleBodies(peer *eth.Peer, txs [][]*types.Transaction, un
 
 // handleBlockAnnounces is invoked from a peer's message handler when it transmits a
 // batch of block announcements for the local node to process.
-func (h *ethHandler) handleBlockAnnounces(peer *eth.Peer, hashes []common.Hash, numbers []uint64) error {
+func (h *ethHandler) handleBlockAnnounces(peer *czz.Peer, hashes []common.Hash, numbers []uint64) error {
 	// Schedule all the unknown hashes for retrieval
 	var (
 		unknownHashes  = make([]common.Hash, 0, len(hashes))
@@ -199,7 +199,7 @@ func (h *ethHandler) handleBlockAnnounces(peer *eth.Peer, hashes []common.Hash, 
 
 // handleBlockBroadcast is invoked from a peer's message handler when it transmits a
 // block broadcast for the local node to process.
-func (h *ethHandler) handleBlockBroadcast(peer *eth.Peer, block *types.Block, td *big.Int) error {
+func (h *ethHandler) handleBlockBroadcast(peer *czz.Peer, block *types.Block, td *big.Int) error {
 	// Schedule the block for import
 	h.blockFetcher.Enqueue(peer.ID(), block)
 

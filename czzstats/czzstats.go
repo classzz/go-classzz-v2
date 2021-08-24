@@ -36,7 +36,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
-	ethproto "github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	ethproto "github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/event"
 	"github.com/classzz/go-classzz-v2/les"
 	"github.com/classzz/go-classzz-v2/log"
@@ -575,7 +575,7 @@ type blockStats struct {
 	Txs        []txStats      `json:"transactions"`
 	TxHash     common.Hash    `json:"transactionsRoot"`
 	Root       common.Hash    `json:"stateRoot"`
-	Uncles     uncleStats     `json:"uncles"`
+	//Uncles     uncleStats     `json:"uncles"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -620,7 +620,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		header *types.Header
 		td     *big.Int
 		txs    []txStats
-		uncles []*types.Header
+		//uncles []*types.Header
 	)
 
 	// check if backend is a full node
@@ -636,7 +636,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		for i, tx := range block.Transactions() {
 			txs[i].Hash = tx.Hash()
 		}
-		uncles = block.Uncles()
+		//uncles = block.Uncles()
 	} else {
 		// Light nodes would need on-demand lookups for transactions/uncles, skip
 		if block != nil {
@@ -664,7 +664,7 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 		Txs:        txs,
 		TxHash:     header.TxHash,
 		Root:       header.Root,
-		Uncles:     uncles,
+		//Uncles:     uncles,
 	}
 }
 

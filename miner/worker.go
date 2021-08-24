@@ -17,7 +17,6 @@
 package miner
 
 import (
-	"bytes"
 	"errors"
 	"math/big"
 	"sync"
@@ -190,15 +189,15 @@ type worker struct {
 
 func newWorker(config *Config, chainConfig *params.ChainConfig, engine consensus.Engine, czz Backend, mux *event.TypeMux, isLocalBlock func(*types.Block) bool, init bool) *worker {
 	worker := &worker{
-		config:             config,
-		chainConfig:        chainConfig,
-		engine:             engine,
-		czz:                czz,
-		mux:                mux,
-		chain:              czz.BlockChain(),
-		isLocalBlock:       isLocalBlock,
-		localUncles:        make(map[common.Hash]*types.Block),
-		remoteUncles:       make(map[common.Hash]*types.Block),
+		config:       config,
+		chainConfig:  chainConfig,
+		engine:       engine,
+		czz:          czz,
+		mux:          mux,
+		chain:        czz.BlockChain(),
+		isLocalBlock: isLocalBlock,
+		//localUncles:        make(map[common.Hash]*types.Block),
+		//remoteUncles:       make(map[common.Hash]*types.Block),
 		unconfirmed:        newUnconfirmedBlocks(czz.BlockChain(), miningLogAtDepth),
 		pendingTasks:       make(map[common.Hash]*task),
 		txsCh:              make(chan core.NewTxsEvent, txChanSize),
@@ -471,28 +470,28 @@ func (w *worker) mainLoop() {
 			}
 			// If our mining block contains less than 2 uncle blocks,
 			// add the new uncle block if valid and regenerate a mining block.
-			if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
-				start := time.Now()
-				if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
-					var uncles []*types.Header
-					w.current.uncles.Each(func(item interface{}) bool {
-						hash, ok := item.(common.Hash)
-						if !ok {
-							return false
-						}
-						uncle, exist := w.localUncles[hash]
-						if !exist {
-							uncle, exist = w.remoteUncles[hash]
-						}
-						if !exist {
-							return false
-						}
-						uncles = append(uncles, uncle.Header())
-						return false
-					})
-					w.commit(uncles, nil, true, start)
-				}
-			}
+			//if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
+			//	//start := time.Now()
+			//	//if err := w.commitUncle(w.current, ev.Block.Header()); err == nil {
+			//	//	//var uncles []*types.Header
+			//	//	w.current.uncles.Each(func(item interface{}) bool {
+			//	//		hash, ok := item.(common.Hash)
+			//	//		if !ok {
+			//	//			return false
+			//	//		}
+			//	//		uncle, exist := w.localUncles[hash]
+			//	//		if !exist {
+			//	//			uncle, exist = w.remoteUncles[hash]
+			//	//		}
+			//	//		if !exist {
+			//	//			return false
+			//	//		}
+			//	//		uncles = append(uncles, uncle.Header())
+			//	//		return false
+			//	//	})
+			//	//	w.commit(uncles, nil, true, start)
+			//	//}
+			//}
 
 		case ev := <-w.txsCh:
 			// Apply transactions to the pending state if we're not mining.
@@ -582,7 +581,9 @@ func (w *worker) taskLoop() {
 			w.pendingTasks[sealHash] = task
 			w.pendingMu.Unlock()
 
-			if err := w.engine.Seal(w.chain, task.block, w.resultCh, stopCh); err != nil {
+			amount, _ := w.chain.GetCurrentStakingByUser(task.block.Coinbase())
+			factor := consensus.MakeFactorForMine(amount)
+			if err := w.engine.Seal(w.chain, task.block, factor, w.resultCh, stopCh); err != nil {
 				log.Warn("Block sealing failed", "err", err)
 			}
 		case <-w.exitCh:
@@ -741,7 +742,6 @@ func (w *worker) updateSnapshot() {
 	w.snapshotBlock = types.NewBlock(
 		w.current.header,
 		w.current.txs,
-		uncles,
 		w.current.receipts,
 		trie.NewStackTrie(nil),
 	)
@@ -814,12 +814,12 @@ func (w *worker) commitTransactions(txs *types.TransactionsByPriceAndNonce, coin
 		from, _ := types.Sender(w.current.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
-
-			txs.Pop()
-			continue
-		}
+		//if tx.Protected() && !w.chainConfig.IsEIP155(w.current.header.Number) {
+		//	log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", w.chainConfig.EIP155Block)
+		//
+		//	txs.Pop()
+		//	continue
+		//}
 		// Start executing the transaction
 		w.current.state.Prepare(tx.Hash(), w.current.tcount)
 
@@ -902,13 +902,13 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		Time:       uint64(timestamp),
 	}
 	// Set baseFee and GasLimit if we are on an EIP-1559 chain
-	if w.chainConfig.IsLondon(header.Number) {
-		header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
-		if !w.chainConfig.IsLondon(parent.Number()) {
-			parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
-			header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
-		}
-	}
+	//if w.chainConfig.IsLondon(header.Number) {
+	header.BaseFee = misc.CalcBaseFee(w.chainConfig, parent.Header())
+	//if !w.chainConfig.IsLondon(parent.Number()) {
+	//	parentGasLimit := parent.GasLimit() * params.ElasticityMultiplier
+	//	header.GasLimit = core.CalcGasLimit(parentGasLimit, w.config.GasCeil)
+	//}
+	//}
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if w.coinbase == (common.Address{}) {
@@ -922,18 +922,18 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		return
 	}
 	// If we are care about TheDAO hard-fork check whether to override the extra-data or not
-	if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
-		// Check whether the block is among the fork extra-override range
-		limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
-		if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
-			// Depending whether we support or oppose the fork, override differently
-			if w.chainConfig.DAOForkSupport {
-				header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
-			} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
-				header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
-			}
-		}
-	}
+	//if daoBlock := w.chainConfig.DAOForkBlock; daoBlock != nil {
+	//	// Check whether the block is among the fork extra-override range
+	//	limit := new(big.Int).Add(daoBlock, params.DAOForkExtraRange)
+	//	if header.Number.Cmp(daoBlock) >= 0 && header.Number.Cmp(limit) < 0 {
+	//		// Depending whether we support or oppose the fork, override differently
+	//		if w.chainConfig.DAOForkSupport {
+	//			header.Extra = common.CopyBytes(params.DAOForkBlockExtra)
+	//		} else if bytes.Equal(header.Extra, params.DAOForkBlockExtra) {
+	//			header.Extra = []byte{} // If miner opposes, don't let it use the reserved extra-data
+	//		}
+	//	}
+	//}
 	// Could potentially happen if starting to mine in an odd state.
 	err := w.makeCurrent(parent, header)
 	if err != nil {
@@ -941,34 +941,34 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 		return
 	}
 	// Create the current work task and check any fork transitions needed
-	env := w.current
-	if w.chainConfig.DAOForkSupport && w.chainConfig.DAOForkBlock != nil && w.chainConfig.DAOForkBlock.Cmp(header.Number) == 0 {
-		misc.ApplyDAOHardFork(env.state)
-	}
+	//env := w.current
+	//if w.chainConfig.DAOForkSupport && w.chainConfig.DAOForkBlock != nil && w.chainConfig.DAOForkBlock.Cmp(header.Number) == 0 {
+	//	misc.ApplyDAOHardFork(env.state)
+	//}
 	// Accumulate the uncles for the current block
 	uncles := make([]*types.Header, 0, 2)
-	commitUncles := func(blocks map[common.Hash]*types.Block) {
-		// Clean up stale uncle blocks first
-		for hash, uncle := range blocks {
-			if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
-				delete(blocks, hash)
-			}
-		}
-		for hash, uncle := range blocks {
-			if len(uncles) == 2 {
-				break
-			}
-			if err := w.commitUncle(env, uncle.Header()); err != nil {
-				log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
-			} else {
-				log.Debug("Committing new uncle to block", "hash", hash)
-				uncles = append(uncles, uncle.Header())
-			}
-		}
-	}
-	// Prefer to locally generated uncle
-	commitUncles(w.localUncles)
-	commitUncles(w.remoteUncles)
+	//commitUncles := func(blocks map[common.Hash]*types.Block) {
+	//	// Clean up stale uncle blocks first
+	//	for hash, uncle := range blocks {
+	//		if uncle.NumberU64()+staleThreshold <= header.Number.Uint64() {
+	//			delete(blocks, hash)
+	//		}
+	//	}
+	//	for hash, uncle := range blocks {
+	//		if len(uncles) == 2 {
+	//			break
+	//		}
+	//		if err := w.commitUncle(env, uncle.Header()); err != nil {
+	//			log.Trace("Possible uncle rejected", "hash", hash, "reason", err)
+	//		} else {
+	//			log.Debug("Committing new uncle to block", "hash", hash)
+	//			uncles = append(uncles, uncle.Header())
+	//		}
+	//	}
+	//}
+	//// Prefer to locally generated uncle
+	//commitUncles(w.localUncles)
+	//commitUncles(w.remoteUncles)
 
 	// Create an empty block based on temporary copied state for
 	// sealing in advance without waiting block execution finished.

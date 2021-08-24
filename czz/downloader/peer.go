@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/classzz/go-classzz-v2/common"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/event"
 	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/p2p/msgrate"

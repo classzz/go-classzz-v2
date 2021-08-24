@@ -179,7 +179,7 @@ type Block struct {
 type extblock struct {
 	Header *Header
 	Txs    []*Transaction
-	Uncles []*Header
+	//Uncles []*Header
 }
 
 // NewBlock creates a new block. The input data is copied,

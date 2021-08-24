@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"io"
 	"math/big"
 	"math/rand"
@@ -31,7 +32,6 @@ import (
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/common/hexutil"
 	"github.com/classzz/go-classzz-v2/consensus"
-	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"github.com/classzz/go-classzz-v2/core/state"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/crypto"
@@ -63,7 +63,7 @@ var (
 	nonceAuthVote = hexutil.MustDecode("0xffffffffffffffff") // Magic nonce number to vote on adding a new signer
 	nonceDropVote = hexutil.MustDecode("0x0000000000000000") // Magic nonce number to vote on removing a signer.
 
-	//uncleHash = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
+	uncleHash = types.CalcUncleHash(nil) // Always Keccak256(RLP([])) as uncles are meaningless outside of PoW.
 
 	diffInTurn = big.NewInt(2) // Block difficulty for in-turn signatures
 	diffNoTurn = big.NewInt(1) // Block difficulty for out-of-turn signatures
@@ -214,14 +214,14 @@ func (c *Clique) Author(header *types.Header) (common.Address, error) {
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
-func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
+func (c *Clique) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool, factor *big.Int) error {
 	return c.verifyHeader(chain, header, nil)
 }
 
 // VerifyHeaders is similar to VerifyHeader, but verifies a batch of headers. The
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).
-func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
+func (c *Clique) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, factors []*big.Int) (chan<- struct{}, <-chan error) {
 	abort := make(chan struct{})
 	results := make(chan error, len(headers))
 
@@ -451,9 +451,9 @@ func (c *Clique) snapshot(chain consensus.ChainHeaderReader, number uint64, hash
 // VerifyUncles implements consensus.Engine, always returning an error for any
 // uncles as this consensus mechanism doesn't permit uncles.
 //func (c *Clique) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-//	if len(block.Uncles()) > 0 {
-//		return errors.New("uncles not allowed")
-//	}
+//	//if len(block.Uncles()) > 0 {
+//	//	return errors.New("uncles not allowed")
+//	//}
 //	return nil
 //}
 
@@ -597,7 +597,7 @@ func (c *Clique) Authorize(signer common.Address, signFn SignerFn) {
 
 // Seal implements consensus.Engine, attempting to create a sealed block using
 // the local signing credentials.
-func (c *Clique) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+func (c *Clique) Seal(chain consensus.ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}) error {
 	header := block.Header()
 
 	// Sealing the genesis block is not supported

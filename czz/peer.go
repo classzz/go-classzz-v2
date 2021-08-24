@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 )
 
@@ -35,7 +35,7 @@ type czzPeerInfo struct {
 
 // czzPeer is a wrapper around czz.Peer to maintain a few extra metadata.
 type czzPeer struct {
-	*eth.Peer
+	*czz.Peer
 	snapExt *snapPeer // Satellite `snap` connection
 
 	syncDrop *time.Timer   // Connection dropper if `czz` sync progress isn't validated in time

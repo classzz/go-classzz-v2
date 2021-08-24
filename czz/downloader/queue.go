@@ -64,8 +64,8 @@ type fetchRequest struct {
 type fetchResult struct {
 	pending int32 // Flag telling what deliveries are outstanding
 
-	Header       *types.Header
-	Uncles       []*types.Header
+	Header *types.Header
+	//Uncles       []*types.Header
 	Transactions types.Transactions
 	Receipts     types.Receipts
 }
@@ -366,9 +366,9 @@ func (q *queue) Results(block bool) []*fetchResult {
 	for _, result := range results {
 		// Recalculate the result item weights to prevent memory exhaustion
 		size := result.Header.Size()
-		for _, uncle := range result.Uncles {
-			size += uncle.Size()
-		}
+		//for _, uncle := range result.Uncles {
+		//	size += uncle.Size()
+		//}
 		for _, receipt := range result.Receipts {
 			size += receipt.Size()
 		}

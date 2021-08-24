@@ -238,7 +238,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 
 // runEthPeer registers an czz peer into the joint czz/snap peerset, adds it to
 // various subsistems and starts handling messages.
-func (h *handler) runEthPeer(peer *eth.Peer, handler eth.Handler) error {
+func (h *handler) runEthPeer(peer *czz.Peer, handler czz.Handler) error {
 	// If the peer has a `snap` extension, wait for it to connect so we can have
 	// a uniform initialization/teardown mechanism
 	snap, err := h.peers.waitSnapExtension(peer)

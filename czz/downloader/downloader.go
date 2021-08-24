@@ -30,7 +30,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/rawdb"
 	"github.com/classzz/go-classzz-v2/core/state/snapshot"
 	"github.com/classzz/go-classzz-v2/core/types"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/czz/protocols/snap"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/event"
@@ -1946,8 +1946,8 @@ func (d *Downloader) DeliverHeaders(id string, headers []*types.Header) error {
 }
 
 // DeliverBodies injects a new batch of block bodies received from a remote node.
-func (d *Downloader) DeliverBodies(id string, transactions [][]*types.Transaction, uncles [][]*types.Header) error {
-	return d.deliver(d.bodyCh, &bodyPack{id, transactions, uncles}, bodyInMeter, bodyDropMeter)
+func (d *Downloader) DeliverBodies(id string, transactions [][]*types.Transaction) error {
+	return d.deliver(d.bodyCh, &bodyPack{id, transactions}, bodyInMeter, bodyDropMeter)
 }
 
 // DeliverReceipts injects a new batch of receipts received from a remote node.
