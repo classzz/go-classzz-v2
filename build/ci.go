@@ -116,7 +116,7 @@ var (
 	}
 
 	// A debian package is created for all executables listed here.
-	debEthereum = debPackage{
+	debClasszz = debPackage{
 		Name:        "classzz",
 		Version:     params.Version,
 		Executables: debExecutables,
@@ -124,7 +124,7 @@ var (
 
 	// Debian meta packages to build and push to Ubuntu PPA
 	debPackages = []debPackage{
-		debEthereum,
+		debClasszz,
 	}
 
 	// Distros for which packages are created.

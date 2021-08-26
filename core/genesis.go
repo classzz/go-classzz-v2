@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/classzz/go-classzz-v2/consensus"
+	"github.com/classzz/go-classzz-v2/rpc"
 	"math/big"
 	"strings"
 
@@ -31,6 +33,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/rawdb"
 	"github.com/classzz/go-classzz-v2/core/state"
 	"github.com/classzz/go-classzz-v2/core/types"
+	"github.com/classzz/go-classzz-v2/core/vm"
 	"github.com/classzz/go-classzz-v2/crypto"
 	"github.com/classzz/go-classzz-v2/czzdb"
 	"github.com/classzz/go-classzz-v2/log"
@@ -43,6 +46,13 @@ import (
 //go:generate gencodec -type GenesisAccount -field-override genesisAccountMarshaling -out gen_genesis_account.go
 
 var errGenesisNoConfig = errors.New("genesis has no chain configuration")
+
+type StakeMember struct {
+	Coinbase  common.Address `json:"coinbase`
+	StakeBase common.Address `json:"stakebase`
+	Pubkey    []byte
+	Amount    *big.Int
+}
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
 // fork switch-over blocks through the chain configuration.
@@ -57,6 +67,7 @@ type Genesis struct {
 	Coinbase   common.Address      `json:"coinbase"`
 	Alloc      GenesisAlloc        `json:"alloc"      gencodec:"required"`
 
+	Committee []*StakeMember `json:"stake"      gencodec:"required"`
 	// These fields are used for consensus tests. Please don't use them
 	// in actual genesis blocks.
 	Number     uint64      `json:"number"`
@@ -242,14 +253,8 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 		return g.Config
 	case ghash == params.MainnetGenesisHash:
 		return params.MainnetChainConfig
-	case ghash == params.RopstenGenesisHash:
-		return params.RopstenChainConfig
-	case ghash == params.RinkebyGenesisHash:
-		return params.RinkebyChainConfig
-	case ghash == params.GoerliGenesisHash:
-		return params.GoerliChainConfig
-	case ghash == params.CalaverasGenesisHash:
-		return params.CalaverasChainConfig
+	case ghash == params.TestnetGenesisHash:
+		return params.TestnetChainConfig
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -272,6 +277,24 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
+	}
+	consensus.OnceInitImpawnState(g.Config, statedb)
+	impl := vm.NewTeWakaImpl()
+	for _, member := range g.Committee {
+		impl.Mortgage(member.StakeBase, vm.TeWaKaAddress, member.Pubkey, member.Amount, nil)
+		vm.GenesisLockedBalance(statedb, member.StakeBase, vm.TeWaKaAddress, member.Amount)
+	}
+	//_, err := impl.DoElections(1, 0)
+	//if err != nil {
+	//	log.Error("ToFastBlock DoElections", "error", err)
+	//}
+	//err = impl.Shift(1, 0)
+	//if err != nil {
+	//	log.Error("ToFastBlock Shift", "error", err)
+	//}
+	err := impl.Save(statedb, vm.TeWaKaAddress)
+	if err != nil {
+		log.Error("ToFastBlock IMPL Save", "error", err)
 	}
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
@@ -358,56 +381,64 @@ func DefaultGenesisBlock() *Genesis {
 		Nonce:      66,
 		ExtraData:  hexutil.MustDecode("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"),
 		GasLimit:   5000,
-		Difficulty: big.NewInt(17179869184),
-		Alloc:      decodePrealloc(mainnetAllocData),
+		Difficulty: big.NewInt(64),
+		Alloc: map[common.Address]GenesisAccount{
+			common.HexToAddress("0x3B70A39dc817EC50dD0A167ac7Dd4C5B80993652"): {Balance: big.NewInt(10000000000000000)}, // ECRecover
+		},
 	}
 }
 
-// DefaultRopstenGenesisBlock returns the Ropsten network genesis block.
-func DefaultRopstenGenesisBlock() *Genesis {
-	return &Genesis{
-		Config:     params.RopstenChainConfig,
-		Nonce:      66,
-		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
-		GasLimit:   16777216,
-		Difficulty: big.NewInt(1048576),
-		Alloc:      decodePrealloc(ropstenAllocData),
-	}
-}
-
-// DefaultRinkebyGenesisBlock returns the Rinkeby network genesis block.
-func DefaultRinkebyGenesisBlock() *Genesis {
-	return &Genesis{
-		Config:     params.RinkebyChainConfig,
-		Timestamp:  1492009146,
-		ExtraData:  hexutil.MustDecode("0x52657370656374206d7920617574686f7269746168207e452e436172746d616e42eb768f2244c8811c63729a21a3569731535f067ffc57839b00206d1ad20c69a1981b489f772031b279182d99e65703f0076e4812653aab85fca0f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:   4700000,
-		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(rinkebyAllocData),
-	}
-}
-
-// DefaultGoerliGenesisBlock returns the Görli network genesis block.
-func DefaultGoerliGenesisBlock() *Genesis {
-	return &Genesis{
-		Config:     params.GoerliChainConfig,
-		Timestamp:  1548854791,
-		ExtraData:  hexutil.MustDecode("0x22466c6578692069732061207468696e6722202d204166726900000000000000e0a2bd4258d2768837baa26a28fe71dc079f84c70000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
-		GasLimit:   10485760,
-		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(goerliAllocData),
-	}
-}
-
-func DefaultCalaverasGenesisBlock() *Genesis {
+func DefaultTestnetGenesisBlock() *Genesis {
 	// Full genesis: https://gist.github.com/holiman/c6ed9269dce28304ad176314caa75e97
+	i1 := new(big.Int).Mul(big.NewInt(990000000), big.NewInt(1e18))
+	i2 := new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
+	// priv1: 06c0fd9dbde37be5f5eb189f4239b1229fe6c57fde12f59c20dd14313c8bc418
+	// addr1: 0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B
+	key1 := hexutil.MustDecode("0x04e76d4d749766a5682f2b88bd0c4633fd2afc1ae183cb21203b321210271de6c498197f32e873586c7a8c32fb5606279466002bb09e99bed225bbe231312ac8e2")
+	// priv2: a13b4e65e4dfc53bf38091b38416140861ee46c85974a8e721d535495db05253
+	// addr2: 0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31
+	key2 := hexutil.MustDecode("0x0470aaf7409e2ff3ef0b3c776f103eb1761ac2949ad8750de10ce9f1b4b497666552542601f0e160b98d2f9057eb3b3e4755c0ed2872b0ad6e6f36b3685953eb1f")
+	// priv3: 8dd4002f948b2679811a2e187b67ab4cf2bfafc73dbcd5436dccea2bd8e77206
+	// addr3: 0xC85eF13F14f807954cA22bdA4919e06c838A079e
+	key3 := hexutil.MustDecode("0x04bfd74dc8e5a30c1352827a1ac5f2aa528940ef24e3ff91b9ca9932ae0a63dad094ab8c833aeda5a306324cd0b6bfda298ca9b4ec568a8817724bcb8189ffd75c")
+
 	return &Genesis{
-		Config:     params.CalaverasChainConfig,
-		Timestamp:  0x60b3877f,
-		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000005211cea3870c7ba7c6c44b185e62eecdb864cd8c560228ce57d31efbf64c200b2c200aacec78cf17a7148e784fe95a7a750335f8b9572ee28d72e7650000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		Config:     params.TestnetChainConfig,
+		Timestamp:  0x6027dd2e,
+		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
 		GasLimit:   0x47b760,
-		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(calaverasAllocData),
+		Difficulty: big.NewInt(100),
+		Alloc: map[common.Address]GenesisAccount{
+			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)},        // ECRecover
+			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)},        // SHA256
+			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)},        // RIPEMD
+			common.BytesToAddress([]byte{101}):                                {Balance: new(big.Int).Set(i2)}, // eth
+			common.BytesToAddress([]byte{102}):                                {Balance: new(big.Int).Set(i2)}, // heco
+			common.BytesToAddress([]byte{103}):                                {Balance: new(big.Int).Set(i2)}, // bsc
+			common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"): {Balance: new(big.Int).Set(i1)},
+			common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"): {Balance: new(big.Int).Set(i1)},
+			common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"): {Balance: new(big.Int).Set(i1)},
+		},
+		Committee: []*StakeMember{
+			{
+				Coinbase:  common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"),
+				StakeBase: common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"),
+				Pubkey:    key1,
+				Amount:    new(big.Int).Set(i2),
+			},
+			{
+				Coinbase:  common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"),
+				StakeBase: common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"),
+				Pubkey:    key2,
+				Amount:    new(big.Int).Set(i2),
+			},
+			{
+				Coinbase:  common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"),
+				StakeBase: common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"),
+				Pubkey:    key3,
+				Amount:    new(big.Int).Set(i2),
+			},
+		},
 	}
 }
 
@@ -452,4 +483,89 @@ func decodePrealloc(data string) GenesisAlloc {
 		ga[common.BigToAddress(account.Addr)] = GenesisAccount{Balance: account.Balance}
 	}
 	return ga
+}
+
+func CommitClient(EthClient, HecoClient, BscClient, OkexClient []string, param *params.ChainConfig) (*params.ChainConfig, error) {
+
+	for _, v := range EthClient {
+
+		if v[:4] != "http" {
+			v = "http://" + v
+		}
+		client, err := rpc.Dial(v)
+		if err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+
+		var number hexutil.Uint64
+		if err := client.Call(&number, "eth_blockNumber"); err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+		log.Info("eth rpc successed", "url", v, "block", number)
+		param.EthClient = append(param.EthClient, client)
+	}
+
+	for _, v := range HecoClient {
+
+		if v[:4] != "http" {
+			v = "http://" + v
+		}
+		client, err := rpc.Dial(v)
+		if err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+
+		var number hexutil.Uint64
+		if err := client.Call(&number, "eth_blockNumber"); err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+		log.Info("heco rpc successed", "url", v, "block", number)
+		param.HecoClient = append(param.HecoClient, client)
+	}
+
+	for _, v := range BscClient {
+
+		if v[:4] != "http" {
+			v = "http://" + v
+		}
+		client, err := rpc.Dial(v)
+		if err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+
+		var number hexutil.Uint64
+		if err := client.Call(&number, "eth_blockNumber"); err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+		log.Info("bsc rpc successed", "url", v, "block", number)
+		param.BscClient = append(param.BscClient, client)
+	}
+
+	for _, v := range OkexClient {
+
+		if v[:4] != "http" {
+			v = "http://" + v
+		}
+		client, err := rpc.Dial(v)
+		if err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+
+		var number hexutil.Uint64
+		if err := client.Call(&number, "eth_blockNumber"); err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+		log.Info("okex rpc successed", "url", v, "block", number)
+		param.OkexClient = append(param.OkexClient, client)
+	}
+
+	return param, nil
 }

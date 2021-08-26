@@ -57,11 +57,7 @@ var customGenesisTests = []struct {
 			"mixhash"    : "0x0000000000000000000000000000000000000000000000000000000000000000",
 			"parentHash" : "0x0000000000000000000000000000000000000000000000000000000000000000",
 			"timestamp"  : "0x00",
-			"config"     : {
-				"homesteadBlock" : 42,
-				"daoForkBlock"   : 141,
-				"daoForkSupport" : true
-			}
+			"config"     : {}
 		}`,
 		query:  "czz.getBlock(0).nonce",
 		result: "0x0000000000001339",

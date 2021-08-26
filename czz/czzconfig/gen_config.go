@@ -48,6 +48,10 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		TrieTimeout             time.Duration
 		SnapshotCache           int
 		Preimages               bool
+		EthClient               []string `toml:",omitempty"`
+		HecoClient              []string `toml:",omitempty"`
+		BscClient               []string `toml:",omitempty"`
+		OkexClient              []string `toml:",omitempty"`
 		Miner                   miner.Config
 		Ethash                  ethash.Config
 		TxPool                  core.TxPoolConfig
@@ -91,6 +95,10 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.TrieTimeout = c.TrieTimeout
 	enc.SnapshotCache = c.SnapshotCache
 	enc.Preimages = c.Preimages
+	enc.EthClient = c.EthClient
+	enc.HecoClient = c.HecoClient
+	enc.BscClient = c.BscClient
+	enc.OkexClient = c.OkexClient
 	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
@@ -138,6 +146,10 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		TrieTimeout             *time.Duration
 		SnapshotCache           *int
 		Preimages               *bool
+		EthClient               []string `toml:",omitempty"`
+		HecoClient              []string `toml:",omitempty"`
+		BscClient               []string `toml:",omitempty"`
+		OkexClient              []string `toml:",omitempty"`
 		Miner                   *miner.Config
 		Ethash                  *ethash.Config
 		TxPool                  *core.TxPoolConfig
@@ -243,6 +255,18 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	}
 	if dec.Preimages != nil {
 		c.Preimages = *dec.Preimages
+	}
+	if dec.EthClient != nil {
+		c.EthClient = dec.EthClient
+	}
+	if dec.HecoClient != nil {
+		c.HecoClient = dec.HecoClient
+	}
+	if dec.BscClient != nil {
+		c.BscClient = dec.BscClient
+	}
+	if dec.OkexClient != nil {
+		c.OkexClient = dec.OkexClient
 	}
 	if dec.Miner != nil {
 		c.Miner = *dec.Miner
