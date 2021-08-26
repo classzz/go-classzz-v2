@@ -42,10 +42,7 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.SmartCardDaemonPathFlag,
 			utils.NetworkIdFlag,
 			utils.MainnetFlag,
-			utils.GoerliFlag,
-			utils.RinkebyFlag,
-			utils.CalaverasFlag,
-			utils.RopstenFlag,
+			utils.TestnetFlag,
 			utils.SyncModeFlag,
 			utils.ExitWhenSyncedFlag,
 			utils.GCModeFlag,
@@ -235,6 +232,15 @@ var AppHelpFlagGroups = []flags.FlagGroup{
 			utils.BloomFilterSizeFlag,
 			cli.HelpFlag,
 			utils.CatalystFlag,
+		},
+	},
+	{
+		Name: "CLIENT",
+		Flags: []cli.Flag{
+			utils.ClientEthFlag,
+			utils.ClientHecoFlag,
+			utils.ClientBscFlag,
+			utils.ClientOkexFlag,
 		},
 	},
 }

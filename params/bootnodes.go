@@ -24,23 +24,8 @@ var MainnetBootnodes = []string{
 	// Classzz Foundation Go Bootnodes
 }
 
-// RopstenBootnodes are the enode URLs of the P2P bootstrap nodes running on the
-// Ropsten test network.
-var RopstenBootnodes = []string{}
-
-// RinkebyBootnodes are the enode URLs of the P2P bootstrap nodes running on the
-// Rinkeby test network.
-var RinkebyBootnodes = []string{}
-
-// GoerliBootnodes are the enode URLs of the P2P bootstrap nodes running on the
-// Görli test network.
-var GoerliBootnodes = []string{
-	// Upstream bootnodes
-}
-
-// CalaverasBootnodes are the enode URLs of the P2P bootstrap nodes running on the
-// Calaveras ephemeral test network.
-var CalaverasBootnodes = []string{}
+// TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the
+var TestnetBootnodes = []string{}
 
 var V5Bootnodes = []string{}
 

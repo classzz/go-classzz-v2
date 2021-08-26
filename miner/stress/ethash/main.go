@@ -56,7 +56,7 @@ func main() {
 	// Pre-generate the ethash mining DAG so we don't race
 	ethash.MakeDataset(1, filepath.Join(os.Getenv("HOME"), ".ethash"))
 
-	// Create an Ethash network based off of the Ropsten config
+	// Create an Ethash network based off of the testnet(devnet) config
 	genesis := makeGenesis(faucets)
 
 	var (
@@ -125,11 +125,11 @@ func main() {
 // makeGenesis creates a custom Ethash genesis block based on some pre-defined
 // faucet accounts.
 func makeGenesis(faucets []*ecdsa.PrivateKey) *core.Genesis {
-	genesis := core.DefaultRopstenGenesisBlock()
+	genesis := core.DeveloperGenesisBlock(15, common.Address{})
 	genesis.Difficulty = params.MinimumDifficulty
 	genesis.GasLimit = 25000000
 
-	genesis.Config.ChainID = big.NewInt(18)
+	genesis.Config.ChainID = big.NewInt(61)
 	genesis.Config.EIP150Hash = common.Hash{}
 
 	genesis.Alloc = core.GenesisAlloc{}

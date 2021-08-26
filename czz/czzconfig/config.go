@@ -90,7 +90,7 @@ var Defaults = Config{
 	TxPool:      core.DefaultTxPoolConfig,
 	RPCGasCap:   50000000,
 	GPO:         FullNodeGPO,
-	RPCTxFeeCap: 1, // 1 ether
+	RPCTxFeeCap: 1, // 1 czz
 }
 
 func init() {
@@ -167,6 +167,11 @@ type Config struct {
 	SnapshotCache           int
 	Preimages               bool
 
+	EthClient  []string `toml:",omitempty"`
+	HecoClient []string `toml:",omitempty"`
+	BscClient  []string `toml:",omitempty"`
+	OkexClient []string `toml:",omitempty"`
+
 	// Mining options
 	Miner miner.Config
 
@@ -189,7 +194,7 @@ type Config struct {
 	RPCGasCap uint64
 
 	// RPCTxFeeCap is the global transaction fee(price * gaslimit) cap for
-	// send-transction variants. The unit is ether.
+	// send-transction variants. The unit is czz.
 	RPCTxFeeCap float64
 
 	// Checkpoint is a hardcoded checkpoint which can be nil.
