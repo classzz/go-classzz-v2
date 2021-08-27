@@ -134,12 +134,12 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, heavy bool)
 			block.AddTx(tx)
 		}
 		// if the block number is a multiple of 5, add a bonus uncle to the block
-		if i > 0 && i%5 == 0 {
-			block.AddUncle(&types.Header{
-				ParentHash: block.PrevBlock(i - 1).Hash(),
-				Number:     big.NewInt(block.Number().Int64() - 1),
-			})
-		}
+		//if i > 0 && i%5 == 0 {
+		//	block.AddUncle(&types.Header{
+		//		ParentHash: block.PrevBlock(i - 1).Hash(),
+		//		Number:     big.NewInt(block.Number().Int64() - 1),
+		//	})
+		//}
 	})
 
 	// Convert the block-chain into a hash-chain and header/block maps
@@ -208,16 +208,9 @@ func (tc *testChain) receipts(hashes []common.Hash) [][]*types.Receipt {
 }
 
 // bodies returns the block bodies of the given block hashes.
-func (tc *testChain) bodies(hashes []common.Hash) ([][]*types.Transaction, [][]*types.Header) {
+func (tc *testChain) bodies(hashes []common.Hash) [][]*types.Transaction {
 	transactions := make([][]*types.Transaction, 0, len(hashes))
-	uncles := make([][]*types.Header, 0, len(hashes))
-	for _, hash := range hashes {
-		if block, ok := tc.blockm[hash]; ok {
-			transactions = append(transactions, block.Transactions())
-			uncles = append(uncles)
-		}
-	}
-	return transactions, uncles
+	return transactions
 }
 
 func (tc *testChain) hashToNumber(target common.Hash) (uint64, bool) {

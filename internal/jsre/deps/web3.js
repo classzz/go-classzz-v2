@@ -13599,7 +13599,7 @@ module.exports = XMLHttpRequest;
 var Method = require('../method');
 
 function Tewaka(web3) {
-
+  this._requestManager = web3._requestManager;
   var self = this;
 
   methods().forEach(function(method) {

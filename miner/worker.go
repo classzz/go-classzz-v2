@@ -946,7 +946,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	//	misc.ApplyDAOHardFork(env.state)
 	//}
 	// Accumulate the uncles for the current block
-	uncles := make([]*types.Header, 0, 2)
+	//uncles := make([]*types.Header, 0, 2)
 	//commitUncles := func(blocks map[common.Hash]*types.Block) {
 	//	// Clean up stale uncle blocks first
 	//	for hash, uncle := range blocks {
@@ -973,7 +973,7 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 	// Create an empty block based on temporary copied state for
 	// sealing in advance without waiting block execution finished.
 	if !noempty && atomic.LoadUint32(&w.noempty) == 0 {
-		w.commit(uncles, nil, false, tstart)
+		w.commit(nil, false, tstart)
 	}
 
 	// Fill the block with all available pending transactions.
@@ -1009,12 +1009,12 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64) 
 			return
 		}
 	}
-	w.commit(uncles, w.fullTaskHook, true, tstart)
+	w.commit(w.fullTaskHook, true, tstart)
 }
 
 // commit runs any post-transaction state modifications, assembles the final block
 // and commits new work if consensus engine is running.
-func (w *worker) commit(uncles []*types.Header, interval func(), update bool, start time.Time) error {
+func (w *worker) commit(interval func(), update bool, start time.Time) error {
 	// Deep copy receipts here to avoid interaction between different tasks.
 	receipts := copyReceipts(w.current.receipts)
 	s := w.current.state.Copy()
@@ -1030,8 +1030,7 @@ func (w *worker) commit(uncles []*types.Header, interval func(), update bool, st
 		case w.taskCh <- &task{receipts: receipts, state: s, block: block, createdAt: time.Now()}:
 			w.unconfirmed.Shift(block.NumberU64() - 1)
 			log.Info("Commit new mining work", "number", block.Number(), "sealhash", w.engine.SealHash(block.Header()),
-				"uncles", len(uncles), "txs", w.current.tcount,
-				"gas", block.GasUsed(), "fees", totalFees(block, receipts),
+				"txs", w.current.tcount, "gas", block.GasUsed(), "fees", totalFees(block, receipts),
 				"elapsed", common.PrettyDuration(time.Since(start)))
 
 		case <-w.exitCh:
