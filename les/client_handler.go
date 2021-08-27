@@ -29,7 +29,7 @@ import (
 	"github.com/classzz/go-classzz-v2/core/forkid"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/czz/downloader"
-	"github.com/classzz/go-classzz-v2/czz/protocols/eth"
+	"github.com/classzz/go-classzz-v2/czz/protocols/czz"
 	"github.com/classzz/go-classzz-v2/light"
 	"github.com/classzz/go-classzz-v2/log"
 	"github.com/classzz/go-classzz-v2/p2p"
@@ -472,7 +472,7 @@ func (d *downloaderPeerNotify) registerPeer(p *serverPeer) {
 		handler: h,
 		peer:    p,
 	}
-	h.downloader.RegisterLightPeer(p.id, eth.ETH65, pc)
+	h.downloader.RegisterLightPeer(p.id, czz.ETH65, pc)
 }
 
 func (d *downloaderPeerNotify) unregisterPeer(p *serverPeer) {

@@ -8,20 +8,20 @@ require (
 	github.com/Azure/go-autorest/autorest/adal v0.8.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.6.0
-	github.com/aws/aws-sdk-go-v2 v1.2.0
-	github.com/aws/aws-sdk-go-v2/config v1.1.1
-	github.com/aws/aws-sdk-go-v2/credentials v1.1.1
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.1.1
+	github.com/aws/aws-sdk-go-v2 v1.2.0 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.1.1 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.1.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.1.1 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/cespare/cp v0.1.0
-	github.com/cloudflare/cloudflare-go v0.14.0
+	github.com/cloudflare/cloudflare-go v0.14.0 // indirect
 	github.com/consensys/gnark-crypto v0.4.1-0.20210426202927-39ac3d4b3f1f
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v0.0.0-20180603214616-504e848d77ea
 	github.com/dlclark/regexp2 v1.2.0 // indirect
 	github.com/docker/docker v1.4.2-0.20180625184442-8e610b2b55bf
 	github.com/dop251/goja v0.0.0-20200721192441-a695b0cdd498
-	github.com/edsrzf/mmap-go v1.0.0
+	github.com/edsrzf/mmap-go v1.0.0 // indirect
 	github.com/fatih/color v1.7.0
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff
@@ -42,7 +42,7 @@ require (
 	github.com/jackpal/go-nat-pmp v1.0.2-0.20160603034137-1fa385a6f458
 	github.com/jedisct1/go-minisign v0.0.0-20190909160543-45766022959e
 	github.com/julienschmidt/httprouter v1.2.0
-	github.com/karalabe/usb v0.0.0-20190919080040-51dc0efba356
+	github.com/karalabe/usb v0.0.0-20190919080040-51dc0efba356 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.0
 	github.com/mattn/go-isatty v0.0.5-0.20180830101745-3fb116b82035

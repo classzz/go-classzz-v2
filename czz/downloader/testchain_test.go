@@ -214,7 +214,7 @@ func (tc *testChain) bodies(hashes []common.Hash) ([][]*types.Transaction, [][]*
 	for _, hash := range hashes {
 		if block, ok := tc.blockm[hash]; ok {
 			transactions = append(transactions, block.Transactions())
-			uncles = append(uncles, block.Uncles())
+			uncles = append(uncles)
 		}
 	}
 	return transactions, uncles
