@@ -1,4 +1,5 @@
 .idea
+/data
 /config.toml
 genesis.json
 /cmd/abigen/Router.abi
