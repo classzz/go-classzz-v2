@@ -135,6 +135,11 @@ func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
 		return nil, genesisErr
 	}
+
+	if chainConfig, err = core.CommitClient(config.EthClient, config.HecoClient, config.BscClient, config.OkexClient, chainConfig); err != nil {
+		return nil, err
+	}
+
 	log.Info("Initialised chain configuration", "config", chainConfig)
 
 	if err := pruner.RecoverPruning(stack.ResolvePath(""), chainDb, stack.ResolvePath(config.TrieCleanCacheJournal)); err != nil {

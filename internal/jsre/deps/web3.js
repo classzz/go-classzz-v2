@@ -5224,16 +5224,9 @@ var transactionFromBlockCall = function (args) {
     return (utils.isString(args[0]) && args[0].indexOf('0x') === 0) ? 'eth_getTransactionByBlockHashAndIndex' : 'eth_getTransactionByBlockNumberAndIndex';
 };
 
-var uncleCall = function (args) {
-    return (utils.isString(args[0]) && args[0].indexOf('0x') === 0) ? 'eth_getUncleByBlockHashAndIndex' : 'eth_getUncleByBlockNumberAndIndex';
-};
 
 var getBlockTransactionCountCall = function (args) {
     return (utils.isString(args[0]) && args[0].indexOf('0x') === 0) ? 'eth_getBlockTransactionCountByHash' : 'eth_getBlockTransactionCountByNumber';
-};
-
-var uncleCountCall = function (args) {
-    return (utils.isString(args[0]) && args[0].indexOf('0x') === 0) ? 'eth_getUncleCountByBlockHash' : 'eth_getUncleCountByBlockNumber';
 };
 
 function Eth(web3) {
@@ -5307,15 +5300,6 @@ var methods = function () {
         outputFormatter: formatters.outputBlockFormatter
     });
 
-    var getUncle = new Method({
-        name: 'getUncle',
-        call: uncleCall,
-        params: 2,
-        inputFormatter: [formatters.inputBlockNumberFormatter, utils.toHex],
-        outputFormatter: formatters.outputBlockFormatter,
-
-    });
-
     var getCompilers = new Method({
         name: 'getCompilers',
         call: 'eth_getCompilers',
@@ -5325,14 +5309,6 @@ var methods = function () {
     var getBlockTransactionCount = new Method({
         name: 'getBlockTransactionCount',
         call: getBlockTransactionCountCall,
-        params: 1,
-        inputFormatter: [formatters.inputBlockNumberFormatter],
-        outputFormatter: utils.toDecimal
-    });
-
-    var getBlockUncleCount = new Method({
-        name: 'getBlockUncleCount',
-        call: uncleCountCall,
         params: 1,
         inputFormatter: [formatters.inputBlockNumberFormatter],
         outputFormatter: utils.toDecimal
@@ -5446,10 +5422,8 @@ var methods = function () {
         getStorageAt,
         getCode,
         getBlock,
-        getUncle,
         getCompilers,
         getBlockTransactionCount,
-        getBlockUncleCount,
         getTransaction,
         getTransactionFromBlock,
         getTransactionReceipt,
@@ -13623,11 +13597,8 @@ module.exports = XMLHttpRequest;
 "use strict";
 
 var Method = require('../method');
-var Iban = require('../iban');
-var transfer = require('../transfer');
 
 function Tewaka(web3) {
-  this._requestManager = web3._requestManager;
 
   var self = this;
 
@@ -13640,10 +13611,6 @@ function Tewaka(web3) {
     p.attachToObject(self);
     p.setRequestManager(self._requestManager);
   });
-
-
-  this.iban = Iban;
-  this.sendIBANTransaction = transfer.bind(null, this);
 }
 
 var methods = function () {
@@ -13668,13 +13635,12 @@ var methods = function () {
 
 var properties = function () {
   return [
-
   ];
 };
 
 module.exports = Tewaka;
 
-},{"../iban":33,"../method":36,"../transfer":49}],
+},{"../method":36}],
   "bignumber.js":[function(require,module,exports){
 'use strict';
 

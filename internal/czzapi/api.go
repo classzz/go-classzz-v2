@@ -2075,3 +2075,48 @@ func toHexSlice(b [][]byte) []string {
 	}
 	return r
 }
+
+type PublicTeWaKaAPI struct {
+	b Backend
+}
+
+// NewPublicTeWaKaAPI
+func NewPublicTeWaKaAPI(b Backend) *PublicTeWaKaAPI {
+	return &PublicTeWaKaAPI{b}
+}
+
+func (api *PublicTeWaKaAPI) GetPledgeInfo(ctx context.Context) ([]*types.Pledge, error) {
+
+	tewaka := vm.NewTeWakaImpl()
+	stateDb, _, err := api.b.StateAndHeaderByNumber(ctx, -1)
+	if err != nil {
+		log.Error("Staking load error", "error", err)
+		return nil, err
+	}
+
+	err = tewaka.Load(stateDb, vm.TeWaKaAddress)
+	if err != nil {
+		log.Error("Staking load error", "error", err)
+		return nil, err
+	}
+
+	return tewaka.PledgeInfos, nil
+}
+
+func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*types.ConvertItem, error) {
+
+	tewaka := vm.NewTeWakaImpl()
+	stateDb, _, err := api.b.StateAndHeaderByNumber(ctx, -1)
+	if err != nil {
+		log.Error("Staking load error", "error", err)
+		return nil, err
+	}
+
+	err = tewaka.Load(stateDb, vm.TeWaKaAddress)
+	if err != nil {
+		log.Error("Staking load error", "error", err)
+		return nil, err
+	}
+
+	return tewaka.ConvertItems, nil
+}

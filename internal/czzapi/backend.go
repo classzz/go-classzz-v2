@@ -130,6 +130,11 @@ func GetAPIs(apiBackend Backend) []rpc.API {
 			Service:   NewPublicAccountAPI(apiBackend.AccountManager()),
 			Public:    true,
 		}, {
+			Namespace: "tewaka",
+			Version:   "1.0",
+			Service:   NewPublicTeWaKaAPI(apiBackend),
+			Public:    true,
+		}, {
 			Namespace: "personal",
 			Version:   "1.0",
 			Service:   NewPrivateAccountAPI(apiBackend, nonceLock),
