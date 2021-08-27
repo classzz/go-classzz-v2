@@ -83,9 +83,9 @@ type environment struct {
 	state     *state.StateDB // apply state changes here
 	ancestors mapset.Set     // ancestor set (used for checking uncle parent validity)
 	family    mapset.Set     // family set (used for checking uncle invalidity)
-	uncles    mapset.Set     // uncle set
-	tcount    int            // tx count in cycle
-	gasPool   *core.GasPool  // available gas used to pack transactions
+	//uncles    mapset.Set     // uncle set
+	tcount  int           // tx count in cycle
+	gasPool *core.GasPool // available gas used to pack transactions
 
 	header   *types.Header
 	txs      []*types.Transaction
@@ -700,9 +700,9 @@ func (w *worker) makeCurrent(parent *types.Block, header *types.Header) error {
 // commitUncle adds the given block to uncle block set, returns error if failed to add.
 func (w *worker) commitUncle(env *environment, uncle *types.Header) error {
 	hash := uncle.Hash()
-	if env.uncles.Contains(hash) {
-		return errors.New("uncle not unique")
-	}
+	//if env.uncles.Contains(hash) {
+	//	return errors.New("uncle not unique")
+	//}
 	if env.header.ParentHash == uncle.ParentHash {
 		return errors.New("uncle is sibling")
 	}
@@ -712,7 +712,7 @@ func (w *worker) commitUncle(env *environment, uncle *types.Header) error {
 	if env.family.Contains(hash) {
 		return errors.New("uncle already included")
 	}
-	env.uncles.Add(uncle.Hash())
+	//env.uncles.Add(uncle.Hash())
 	return nil
 }
 
@@ -722,22 +722,22 @@ func (w *worker) updateSnapshot() {
 	w.snapshotMu.Lock()
 	defer w.snapshotMu.Unlock()
 
-	var uncles []*types.Header
-	w.current.uncles.Each(func(item interface{}) bool {
-		hash, ok := item.(common.Hash)
-		if !ok {
-			return false
-		}
-		uncle, exist := w.localUncles[hash]
-		if !exist {
-			uncle, exist = w.remoteUncles[hash]
-		}
-		if !exist {
-			return false
-		}
-		uncles = append(uncles, uncle.Header())
-		return false
-	})
+	//var uncles []*types.Header
+	//w.current.uncles.Each(func(item interface{}) bool {
+	//	hash, ok := item.(common.Hash)
+	//	if !ok {
+	//		return false
+	//	}
+	//	uncle, exist := w.localUncles[hash]
+	//	if !exist {
+	//		uncle, exist = w.remoteUncles[hash]
+	//	}
+	//	if !exist {
+	//		return false
+	//	}
+	//	uncles = append(uncles, uncle.Header())
+	//	return false
+	//})
 
 	w.snapshotBlock = types.NewBlock(
 		w.current.header,

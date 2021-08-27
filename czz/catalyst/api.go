@@ -18,7 +18,6 @@
 package catalyst
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -38,12 +37,12 @@ import (
 
 // Register adds catalyst APIs to the node.
 func Register(stack *node.Node, backend *czz.Classzz) error {
-	chainconfig := backend.BlockChain().Config()
-	if chainconfig.CatalystBlock == nil {
-		return errors.New("catalystBlock is not set in genesis config")
-	} else if chainconfig.CatalystBlock.Sign() != 0 {
-		return errors.New("catalystBlock of genesis config must be zero")
-	}
+	//chainconfig := backend.BlockChain().Config()
+	//if chainconfig.CatalystBlock == nil {
+	//	return errors.New("catalystBlock is not set in genesis config")
+	//} else if chainconfig.CatalystBlock.Sign() != 0 {
+	//	return errors.New("catalystBlock of genesis config must be zero")
+	//}
 
 	log.Warn("Catalyst mode enabled")
 	stack.RegisterAPIs([]rpc.API{
@@ -146,9 +145,10 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 		Extra:      []byte{},
 		Time:       params.Timestamp,
 	}
-	if config := api.czz.BlockChain().Config(); config.IsLondon(header.Number) {
-		header.BaseFee = misc.CalcBaseFee(config, parent.Header())
-	}
+	//if config := api.czz.BlockChain().Config(); config.IsLondon(header.Number) {
+	config := api.czz.BlockChain().Config()
+	header.BaseFee = misc.CalcBaseFee(config, parent.Header())
+	//}
 	err = api.czz.Engine().Prepare(bc, header)
 	if err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (api *consensusAPI) AssembleBlock(params assembleBlockParams) (*executableD
 	}
 
 	// Create the block.
-	block, err := api.czz.Engine().FinalizeAndAssemble(bc, header, env.state, transactions, nil /* uncles */, env.receipts)
+	block, err := api.czz.Engine().FinalizeAndAssemble(bc, header, env.state, transactions, env.receipts)
 	if err != nil {
 		return nil, err
 	}
@@ -259,8 +259,8 @@ func insertBlockParamsToBlock(config *chainParams.ChainConfig, parent *types.Hea
 	number := big.NewInt(0)
 	number.SetUint64(params.Number)
 	header := &types.Header{
-		ParentHash:  params.ParentHash,
-		UncleHash:   types.EmptyUncleHash,
+		ParentHash: params.ParentHash,
+		//UncleHash:   types.EmptyUncleHash,
 		Coinbase:    params.Miner,
 		Root:        params.StateRoot,
 		TxHash:      types.DeriveSha(types.Transactions(txs), trie.NewStackTrie(nil)),
@@ -272,10 +272,10 @@ func insertBlockParamsToBlock(config *chainParams.ChainConfig, parent *types.Hea
 		GasUsed:     params.GasUsed,
 		Time:        params.Timestamp,
 	}
-	if config.IsLondon(number) {
-		header.BaseFee = misc.CalcBaseFee(config, parent)
-	}
-	block := types.NewBlockWithHeader(header).WithBody(txs, nil /* uncles */)
+	//if config.IsLondon(number) {
+	header.BaseFee = misc.CalcBaseFee(config, parent)
+	//}
+	block := types.NewBlockWithHeader(header).WithBody(txs)
 	return block, nil
 }
 

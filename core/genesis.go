@@ -215,12 +215,12 @@ func SetupGenesisBlockWithOverride(db czzdb.Database, genesis *Genesis, override
 	}
 	// Get the existing chain configuration.
 	newcfg := genesis.configOrDefault(stored)
-	if overrideLondon != nil {
-		newcfg.LondonBlock = overrideLondon
-	}
-	if err := newcfg.CheckConfigForkOrder(); err != nil {
-		return newcfg, common.Hash{}, err
-	}
+	//if overrideLondon != nil {
+	//	newcfg.LondonBlock = overrideLondon
+	//}
+	//if err := newcfg.CheckConfigForkOrder(); err != nil {
+	//	return newcfg, common.Hash{}, err
+	//}
 	storedcfg := rawdb.ReadChainConfig(db, stored)
 	if storedcfg == nil {
 		log.Warn("Found genesis block without chain config")
@@ -292,7 +292,7 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 	//if err != nil {
 	//	log.Error("ToFastBlock Shift", "error", err)
 	//}
-	err := impl.Save(statedb, vm.TeWaKaAddress)
+	err = impl.Save(statedb, vm.TeWaKaAddress)
 	if err != nil {
 		log.Error("ToFastBlock IMPL Save", "error", err)
 	}
@@ -317,17 +317,15 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 	if g.Difficulty == nil {
 		head.Difficulty = params.GenesisDifficulty
 	}
-	if g.Config != nil && g.Config.IsLondon(common.Big0) {
-		if g.BaseFee != nil {
-			head.BaseFee = g.BaseFee
-		} else {
-			head.BaseFee = new(big.Int).SetUint64(params.InitialBaseFee)
-		}
+	if g.BaseFee != nil {
+		head.BaseFee = g.BaseFee
+	} else {
+		head.BaseFee = new(big.Int).SetUint64(params.InitialBaseFee)
 	}
 	statedb.Commit(false)
 	statedb.Database().TrieDB().Commit(root, true, nil)
 
-	return types.NewBlock(head, nil, nil, nil, trie.NewStackTrie(nil))
+	return types.NewBlock(head, nil, nil, trie.NewStackTrie(nil))
 }
 
 // Commit writes the block and state of a genesis specification to the database.
@@ -341,9 +339,9 @@ func (g *Genesis) Commit(db czzdb.Database) (*types.Block, error) {
 	if config == nil {
 		config = params.AllEthashProtocolChanges
 	}
-	if err := config.CheckConfigForkOrder(); err != nil {
-		return nil, err
-	}
+	//if err := config.CheckConfigForkOrder(); err != nil {
+	//	return nil, err
+	//}
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
 	rawdb.WriteBlock(db, block)
 	rawdb.WriteReceipts(db, block.Hash(), block.NumberU64(), nil)

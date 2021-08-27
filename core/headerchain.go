@@ -300,7 +300,7 @@ func (hc *HeaderChain) writeHeaders(headers []*types.Header) (result *headerWrit
 	}, nil
 }
 
-func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
+func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int, factors []*big.Int) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 {
@@ -338,7 +338,7 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 		seals[len(seals)-1] = true
 	}
 
-	abort, results := hc.engine.VerifyHeaders(hc, chain, seals)
+	abort, results := hc.engine.VerifyHeaders(hc, chain, seals, factors)
 	defer close(abort)
 
 	// Iterate over the headers and ensure they all check out

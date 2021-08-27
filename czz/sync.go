@@ -41,12 +41,12 @@ const (
 )
 
 type txsync struct {
-	p   *eth.Peer
+	p   *czz.Peer
 	txs []*types.Transaction
 }
 
 // syncTransactions starts sending all currently pending transactions to the given peer.
-func (h *handler) syncTransactions(p *eth.Peer) {
+func (h *handler) syncTransactions(p *czz.Peer) {
 	// Assemble the set of transaction to broadcast or announce to the remote
 	// peer. Fun fact, this is quite an expensive operation as it needs to sort
 	// the transactions if the sorting is not cached yet. However, with a random
@@ -64,7 +64,7 @@ func (h *handler) syncTransactions(p *eth.Peer) {
 	// The eth/65 protocol introduces proper transaction announcements, so instead
 	// of dripping transactions across multiple peers, just send the entire list as
 	// an announcement and let the remote side decide what they need (likely nothing).
-	if p.Version() >= eth.ETH65 {
+	if p.Version() >= czz.ETH65 {
 		hashes := make([]common.Hash, len(txs))
 		for i, tx := range txs {
 			hashes[i] = tx.Hash()
@@ -95,7 +95,7 @@ func (h *handler) txsyncLoop64() {
 
 	// send starts a sending a pack of transactions from the sync.
 	send := func(s *txsync) {
-		if s.p.Version() >= eth.ETH65 {
+		if s.p.Version() >= czz.ETH65 {
 			panic("initial transaction syncer running on eth/65+")
 		}
 		// Fill pack with transactions up to the target size.
@@ -166,7 +166,7 @@ type chainSyncer struct {
 // chainSyncOp is a scheduled sync operation.
 type chainSyncOp struct {
 	mode downloader.SyncMode
-	peer *eth.Peer
+	peer *czz.Peer
 	td   *big.Int
 	head common.Hash
 }
@@ -182,7 +182,7 @@ func newChainSyncer(handler *handler) *chainSyncer {
 // handlePeerEvent notifies the syncer about a change in the peer set.
 // This is called for new peers and every time a peer announces a new
 // chain head.
-func (cs *chainSyncer) handlePeerEvent(peer *eth.Peer) bool {
+func (cs *chainSyncer) handlePeerEvent(peer *czz.Peer) bool {
 	select {
 	case cs.peerEventCh <- struct{}{}:
 		return true
@@ -267,7 +267,7 @@ func (cs *chainSyncer) nextSyncOp() *chainSyncOp {
 	return op
 }
 
-func peerToSyncOp(mode downloader.SyncMode, p *eth.Peer) *chainSyncOp {
+func peerToSyncOp(mode downloader.SyncMode, p *czz.Peer) *chainSyncOp {
 	peerHead, peerTD := p.Head()
 	return &chainSyncOp{mode: mode, peer: p, td: peerTD, head: peerHead}
 }

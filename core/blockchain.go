@@ -2385,7 +2385,14 @@ Error: %v
 // because nonces can be verified sparsely, not needing to check each.
 func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
 	start := time.Now()
-	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
+	factors := make([]*big.Int, len(chain))
+
+	for i, hh := range chain {
+		amount, _ := bc.GetCurrentStakingByUser(hh.Coinbase)
+		factor := consensus.MakeFactorForMine(amount)
+		factors[i] = factor
+	}
+	if i, err := bc.hc.ValidateHeaderChain(chain, checkFreq, factors); err != nil {
 		return i, err
 	}
 

@@ -385,7 +385,8 @@ func (lc *LightChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 		checkFreq = 0
 	}
 	start := time.Now()
-	if i, err := lc.hc.ValidateHeaderChain(chain, checkFreq); err != nil {
+	factors := make([]*big.Int, len(chain))
+	if i, err := lc.hc.ValidateHeaderChain(chain, checkFreq, factors); err != nil {
 		return i, err
 	}
 

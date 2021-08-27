@@ -117,7 +117,7 @@ func (czz *Classzz) stateAtBlock(block *types.Block, reexec uint64, base *state.
 			return nil, fmt.Errorf("processing block %d failed: %v", current.NumberU64(), err)
 		}
 		// Finalize the state so any modifications are written to the trie
-		root, err := statedb.Commit(czz.blockchain.Config().IsEIP158(current.Number()))
+		root, err := statedb.Commit(true)
 		if err != nil {
 			return nil, err
 		}
@@ -176,7 +176,7 @@ func (czz *Classzz) stateAtTransaction(block *types.Block, txIndex int, reexec u
 		}
 		// Ensure any modifications are committed to the state
 		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-		statedb.Finalise(vmenv.ChainConfig().IsEIP158(block.Number()))
+		statedb.Finalise(true)
 	}
 	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for block %#x", txIndex, block.Hash())
 }

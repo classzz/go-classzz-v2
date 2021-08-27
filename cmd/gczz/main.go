@@ -66,7 +66,6 @@ var (
 		utils.NoUSBFlag,
 		utils.USBFlag,
 		utils.SmartCardDaemonPathFlag,
-		utils.OverrideLondonFlag,
 		utils.EthashCacheDirFlag,
 		utils.EthashCachesInMemoryFlag,
 		utils.EthashCachesOnDiskFlag,
@@ -225,8 +224,6 @@ func init() {
 		attachCommand,
 		javascriptCommand,
 		// See misccmd.go:
-		makecacheCommand,
-		makedagCommand,
 		versionCommand,
 		versionCheckCommand,
 		licenseCommand,

@@ -119,9 +119,9 @@ func (r *BlockRequest) Validate(db czzdb.Database, msg *Msg) error {
 	if r.Header.TxHash != types.DeriveSha(types.Transactions(body.Transactions), trie.NewStackTrie(nil)) {
 		return errTxHashMismatch
 	}
-	if r.Header.UncleHash != types.CalcUncleHash(body.Uncles) {
-		return errUncleHashMismatch
-	}
+	//if r.Header.UncleHash != types.CalcUncleHash(body.Uncles) {
+	//	return errUncleHashMismatch
+	//}
 	// Validations passed, encode and store RLP
 	data, err := rlp.EncodeToBytes(body)
 	if err != nil {

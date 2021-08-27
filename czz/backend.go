@@ -514,7 +514,7 @@ func (s *Classzz) BloomIndexer() *core.ChainIndexer   { return s.bloomIndexer }
 // Protocols returns all the currently configured
 // network protocols to start.
 func (s *Classzz) Protocols() []p2p.Protocol {
-	protos := eth.MakeProtocols((*ethHandler)(s.handler), s.networkID, s.ethDialCandidates)
+	protos := czz.MakeProtocols((*ethHandler)(s.handler), s.networkID, s.ethDialCandidates)
 	if s.config.SnapshotCache > 0 {
 		protos = append(protos, snap.MakeProtocols((*snapHandler)(s.handler), s.snapDialCandidates)...)
 	}
@@ -524,7 +524,7 @@ func (s *Classzz) Protocols() []p2p.Protocol {
 // Start implements node.Lifecycle, starting all internal goroutines needed by the
 // Classzz protocol implementation.
 func (s *Classzz) Start() error {
-	eth.StartENRUpdater(s.blockchain, s.p2pServer.LocalNode())
+	czz.StartENRUpdater(s.blockchain, s.p2pServer.LocalNode())
 
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)

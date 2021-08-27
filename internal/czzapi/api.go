@@ -609,10 +609,11 @@ func NewPublicBlockChainAPI(b Backend) *PublicBlockChainAPI {
 // ChainId is the EIP-155 replay-protection chain id for the current classzz chain config.
 func (api *PublicBlockChainAPI) ChainId() (*hexutil.Big, error) {
 	// if current block is at or past the EIP-155 replay-protection fork block, return chainID from config
-	if config := api.b.ChainConfig(); config.IsEIP155(api.b.CurrentBlock().Number()) {
-		return (*hexutil.Big)(config.ChainID), nil
-	}
-	return nil, fmt.Errorf("chain not synced beyond EIP-155 replay-protection fork block")
+	//if config := api.b.ChainConfig(); config.IsEIP155(api.b.CurrentBlock().Number()) {
+	config := api.b.ChainConfig()
+	return (*hexutil.Big)(config.ChainID), nil
+	//}
+	//return nil, fmt.Errorf("chain not synced beyond EIP-155 replay-protection fork block")
 }
 
 // BlockNumber returns the block number of the chain head.
@@ -1636,16 +1637,16 @@ func (s *PublicTransactionPoolAPI) GetTransactionReceipt(ctx context.Context, ha
 		"type":              hexutil.Uint(tx.Type()),
 	}
 	// Assign the effective gas price paid
-	if !s.b.ChainConfig().IsLondon(bigblock) {
-		fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice().Uint64())
-	} else {
-		header, err := s.b.HeaderByHash(ctx, blockHash)
-		if err != nil {
-			return nil, err
-		}
-		gasPrice := new(big.Int).Add(header.BaseFee, tx.EffectiveGasTipValue(header.BaseFee))
-		fields["effectiveGasPrice"] = hexutil.Uint64(gasPrice.Uint64())
+	//if !s.b.ChainConfig().IsLondon(bigblock) {
+	//	fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice().Uint64())
+	//} else {
+	header, err := s.b.HeaderByHash(ctx, blockHash)
+	if err != nil {
+		return nil, err
 	}
+	gasPrice := new(big.Int).Add(header.BaseFee, tx.EffectiveGasTipValue(header.BaseFee))
+	fields["effectiveGasPrice"] = hexutil.Uint64(gasPrice.Uint64())
+	//}
 	// Assign receipt status or post state.
 	if len(receipt.PostState) > 0 {
 		fields["root"] = hexutil.Bytes(receipt.PostState)

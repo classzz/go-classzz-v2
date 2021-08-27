@@ -231,9 +231,9 @@ type TxPool struct {
 	signer      types.Signer
 	mu          sync.RWMutex
 
-	istanbul bool // Fork indicator whether we are in the istanbul stage.
-	eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
-	eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
+	//istanbul bool // Fork indicator whether we are in the istanbul stage.
+	//eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
+	//eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
@@ -570,13 +570,13 @@ func (pool *TxPool) local() map[common.Address]types.Transactions {
 // rules and adheres to some heuristic limits of the local node (price and size).
 func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	// Accept only legacy transactions until EIP-2718/2930 activates.
-	if !pool.eip2718 && tx.Type() != types.LegacyTxType {
-		return ErrTxTypeNotSupported
-	}
-	// Reject dynamic fee transactions until EIP-1559 activates.
-	if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
-		return ErrTxTypeNotSupported
-	}
+	//if !pool.eip2718 && tx.Type() != types.LegacyTxType {
+	//	return ErrTxTypeNotSupported
+	//}
+	//// Reject dynamic fee transactions until EIP-1559 activates.
+	//if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
+	//	return ErrTxTypeNotSupported
+	//}
 	// Reject transactions over defined size to prevent DOS attacks
 	if uint64(tx.Size()) > txMaxSize {
 		return ErrOversizedData
@@ -620,7 +620,7 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 		return ErrInsufficientFunds
 	}
 	// Ensure the transaction has more gas than the basic tx fee.
-	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, pool.istanbul)
+	intrGas, err := IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
 	if err != nil {
 		return err
 	}
@@ -1149,10 +1149,10 @@ func (pool *TxPool) runReorg(done chan struct{}, reset *txpoolResetRequest, dirt
 	// because of another transaction (e.g. higher gas price).
 	if reset != nil {
 		pool.demoteUnexecutables()
-		if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
-			pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
-			pool.priced.SetBaseFee(pendingBaseFee)
-		}
+		//if reset.newHead != nil && pool.chainconfig.IsLondon(new(big.Int).Add(reset.newHead.Number, big.NewInt(1))) {
+		pendingBaseFee := misc.CalcBaseFee(pool.chainconfig, reset.newHead)
+		pool.priced.SetBaseFee(pendingBaseFee)
+		//}
 	}
 	// Ensure pool.queue and pool.pending sizes stay within the configured limits.
 	pool.truncatePending()
@@ -1267,10 +1267,10 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.addTxsLocked(reinject, false)
 
 	// Update all fork indicator by next pending block number.
-	next := new(big.Int).Add(newHead.Number, big.NewInt(1))
-	pool.istanbul = pool.chainconfig.IsIstanbul(next)
-	pool.eip2718 = pool.chainconfig.IsBerlin(next)
-	pool.eip1559 = pool.chainconfig.IsLondon(next)
+	//next := new(big.Int).Add(newHead.Number, big.NewInt(1))
+	//pool.istanbul = pool.chainconfig.IsIstanbul(next)
+	//pool.eip2718 = pool.chainconfig.IsBerlin(next)
+	//pool.eip1559 = pool.chainconfig.IsLondon(next)
 }
 
 // promoteExecutables moves transactions that have become processable from the
