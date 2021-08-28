@@ -342,7 +342,7 @@ func (api *PrivateDebugAPI) GetBadBlocks(ctx context.Context) ([]*BadBlockArgs, 
 		} else {
 			blockRlp = fmt.Sprintf("0x%x", rlpBytes)
 		}
-		if blockJSON, err = czzapi.RPCMarshalBlock(block, true, true); err != nil {
+		if blockJSON, err = czzapi.RPCMarshalBlock(block, true, true, api.czz.engine); err != nil {
 			blockJSON = map[string]interface{}{"error": err.Error()}
 		}
 		results = append(results, &BadBlockArgs{

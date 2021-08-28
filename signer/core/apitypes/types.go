@@ -1,30 +1,30 @@
-// Copyright 2018 The go-classzz-v2 Authors
-// This file is part of the go-classzz-v2 library.
+// Copyright 2018 The go-ethereum Authors
+// This file is part of the go-ethereum library.
 //
-// The go-classzz-v2 library is free software: you can redistribute it and/or modify
+// The go-ethereum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-classzz-v2 library is distributed in the hope that it will be useful,
+// The go-ethereum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-classzz-v2 library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 package apitypes
 
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strings"
 
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/common/hexutil"
 	"github.com/classzz/go-classzz-v2/core/types"
-	"github.com/classzz/go-classzz-v2/internal/czzapi"
 )
 
 type ValidationInfo struct {
@@ -66,7 +66,7 @@ func (v *ValidationMessages) GetWarnings() error {
 }
 
 // SendTxArgs represents the arguments to submit a transaction
-// This struct is identical to czzapi.TransactionArgs, except for the usage of
+// This struct is identical to ethapi.TransactionArgs, except for the usage of
 // common.MixedcaseAddress in From and To
 type SendTxArgs struct {
 	From                 common.MixedcaseAddress  `json:"from"`
@@ -80,7 +80,7 @@ type SendTxArgs struct {
 
 	// We accept "data" and "input" for backwards-compatibility reasons.
 	// "input" is the newer name and should be preferred by clients.
-	// Issue detail: https://github.com/classzz/go-classzz-v2/issues/15628
+	// Issue detail: https://github.com/ethereum/go-ethereum/issues/15628
 	Data  *hexutil.Bytes `json:"data"`
 	Input *hexutil.Bytes `json:"input,omitempty"`
 
@@ -97,23 +97,60 @@ func (args SendTxArgs) String() string {
 	return err.Error()
 }
 
+// ToTransaction converts the arguments to a transaction.
 func (args *SendTxArgs) ToTransaction() *types.Transaction {
-	txArgs := czzapi.TransactionArgs{
-		Gas:                  &args.Gas,
-		GasPrice:             args.GasPrice,
-		MaxFeePerGas:         args.MaxFeePerGas,
-		MaxPriorityFeePerGas: args.MaxPriorityFeePerGas,
-		Value:                &args.Value,
-		Nonce:                &args.Nonce,
-		Data:                 args.Data,
-		Input:                args.Input,
-		AccessList:           args.AccessList,
-		ChainID:              args.ChainID,
-	}
 	// Add the To-field, if specified
+	var to *common.Address
 	if args.To != nil {
-		to := args.To.Address()
-		txArgs.To = &to
+		dstAddr := args.To.Address()
+		to = &dstAddr
 	}
-	return txArgs.ToTransaction()
+
+	var input []byte
+	if args.Input != nil {
+		input = *args.Input
+	} else if args.Data != nil {
+		input = *args.Data
+	}
+
+	var data types.TxData
+	switch {
+	case args.MaxFeePerGas != nil:
+		al := types.AccessList{}
+		if args.AccessList != nil {
+			al = *args.AccessList
+		}
+		data = &types.DynamicFeeTx{
+			To:         to,
+			ChainID:    (*big.Int)(args.ChainID),
+			Nonce:      uint64(args.Nonce),
+			Gas:        uint64(args.Gas),
+			GasFeeCap:  (*big.Int)(args.MaxFeePerGas),
+			GasTipCap:  (*big.Int)(args.MaxPriorityFeePerGas),
+			Value:      (*big.Int)(&args.Value),
+			Data:       input,
+			AccessList: al,
+		}
+	case args.AccessList != nil:
+		data = &types.AccessListTx{
+			To:         to,
+			ChainID:    (*big.Int)(args.ChainID),
+			Nonce:      uint64(args.Nonce),
+			Gas:        uint64(args.Gas),
+			GasPrice:   (*big.Int)(args.GasPrice),
+			Value:      (*big.Int)(&args.Value),
+			Data:       input,
+			AccessList: *args.AccessList,
+		}
+	default:
+		data = &types.LegacyTx{
+			To:       to,
+			Nonce:    uint64(args.Nonce),
+			Gas:      uint64(args.Gas),
+			GasPrice: (*big.Int)(args.GasPrice),
+			Value:    (*big.Int)(&args.Value),
+			Data:     input,
+		}
+	}
+	return types.NewTx(data)
 }

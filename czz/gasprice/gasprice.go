@@ -1,23 +1,26 @@
-// Copyright 2015 The go-classzz-v2 Authors
-// This file is part of the go-classzz-v2 library.
+// Copyright 2015 The go-ethereum Authors
+// This file is part of the go-ethereum library.
 //
-// The go-classzz-v2 library is free software: you can redistribute it and/or modify
+// The go-ethereum library is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Lesser General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 //
-// The go-classzz-v2 library is distributed in the hope that it will be useful,
+// The go-ethereum library is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 // GNU Lesser General Public License for more details.
 //
 // You should have received a copy of the GNU Lesser General Public License
-// along with the go-classzz-v2 library. If not, see <http://www.gnu.org/licenses/>.
+// along with the go-ethereum library. If not, see <http://www.gnu.org/licenses/>.
 
 package gasprice
 
 import (
 	"context"
+	"github.com/classzz/go-classzz-v2/core"
+	"github.com/classzz/go-classzz-v2/event"
+	lru "github.com/hashicorp/golang-lru"
 	"math/big"
 	"sort"
 	"sync"
@@ -53,6 +56,7 @@ type OracleBackend interface {
 	GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error)
 	PendingBlockAndReceipts() (*types.Block, types.Receipts)
 	ChainConfig() *params.ChainConfig
+	SubscribeChainHeadEvent(ch chan<- core.ChainHeadEvent) event.Subscription
 }
 
 // Oracle recommends gas prices based on the content of recent
@@ -68,6 +72,7 @@ type Oracle struct {
 
 	checkBlocks, percentile           int
 	maxHeaderHistory, maxBlockHistory int
+	historyCache                      *lru.Cache
 }
 
 // NewOracle returns a new gasprice oracle which can recommend suitable
@@ -99,6 +104,20 @@ func NewOracle(backend OracleBackend, params Config) *Oracle {
 	} else if ignorePrice.Int64() > 0 {
 		log.Info("Gasprice oracle is ignoring threshold set", "threshold", ignorePrice)
 	}
+
+	cache, _ := lru.New(2048)
+	headEvent := make(chan core.ChainHeadEvent, 1)
+	backend.SubscribeChainHeadEvent(headEvent)
+	go func() {
+		var lastHead common.Hash
+		for ev := range headEvent {
+			if ev.Block.ParentHash() != lastHead {
+				cache.Purge()
+			}
+			lastHead = ev.Block.Hash()
+		}
+	}()
+
 	return &Oracle{
 		backend:          backend,
 		lastPrice:        params.Default,
@@ -108,6 +127,7 @@ func NewOracle(backend OracleBackend, params Config) *Oracle {
 		percentile:       percent,
 		maxHeaderHistory: params.MaxHeaderHistory,
 		maxBlockHistory:  params.MaxBlockHistory,
+		historyCache:     cache,
 	}
 }
 
