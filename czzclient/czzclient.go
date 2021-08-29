@@ -554,3 +554,33 @@ func toCallArg(msg classzz.CallMsg) interface{} {
 	}
 	return arg
 }
+
+//czz_pubkey
+func (ec *Client) Pubkey(ctx context.Context) (string, error) {
+	var result string
+	err := ec.c.CallContext(ctx, &result, "czz_pubkey", nil)
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+//tewaka_getPledgeInfo
+func (ec *Client) GetPledgeInfo(ctx context.Context, account common.Address, number *big.Int) ([]*types.Pledge, error) {
+	var result []*types.Pledge
+	err := ec.c.CallContext(ctx, &result, "tewaka_getPledgeInfo", account, toBlockNumArg(number))
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+//tewaka_getConvertItem
+func (ec *Client) GetConvertItem(ctx context.Context) ([]*types.ConvertItem, error) {
+	var result []*types.ConvertItem
+	err := ec.c.CallContext(ctx, &result, "tewaka_getConvertItems")
+	if err != nil {
+		return result, err
+	}
+	return result, nil
+}

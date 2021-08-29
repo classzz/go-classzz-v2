@@ -43,11 +43,8 @@ const (
 )
 
 var (
-	baseUnit  = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	Int10     = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
-	fbaseUnit = new(big.Float).SetFloat64(float64(baseUnit.Int64()))
-	mixImpawn = new(big.Int).Mul(big.NewInt(1000), baseUnit)
-	Base      = new(big.Int).SetUint64(10000)
+	baseUnit = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	Int10    = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
 
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
