@@ -323,8 +323,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
 	item.Committee = tewaka.GetCommittee()
 	IDHash := common.RlpHash(item)
-	item.ID = new(big.Int).SetBytes(IDHash[:])
-
+	item.ID = new(big.Int).SetBytes(IDHash[:10])
 	t2 := time.Now()
 
 	if item.ConvertType != ExpandedTxConvert_Czz {
@@ -501,7 +500,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
 	item.Committee = tewaka.GetCommittee()
 	IDHash := common.RlpHash(item)
-	item.ID = new(big.Int).SetBytes(IDHash[:])
+	item.ID = new(big.Int).SetBytes(IDHash[:10])
 
 	t2 := time.Now()
 	tewaka.Convert(item)
