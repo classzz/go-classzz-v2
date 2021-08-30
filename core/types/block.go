@@ -208,16 +208,6 @@ func NewBlock(header *Header, txs []*Transaction, receipts []*Receipt, hasher Tr
 		b.header.Bloom = CreateBloom(receipts)
 	}
 
-	//if len(uncles) == 0 {
-	//	b.header.UncleHash = EmptyUncleHash
-	//} else {
-	//	b.header.UncleHash = CalcUncleHash(uncles)
-	//	b.uncles = make([]*Header, len(uncles))
-	//	for i := range uncles {
-	//		b.uncles[i] = CopyHeader(uncles[i])
-	//	}
-	//}
-
 	return b
 }
 
