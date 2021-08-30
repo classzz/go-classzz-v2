@@ -17,7 +17,6 @@
 package ethash
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/classzz/go-classzz-v2/core/vm"
@@ -383,16 +382,15 @@ func (ethash *Ethash) verifySeal(chain consensus.ChainHeaderReader, header *type
 		return errInvalidDifficulty
 	}
 	var (
-		digest []byte
 		result []byte
 	)
 	// If fast-but-heavy PoW verification was requested, use an ethash dataset
 	result = HashCZZ(ethash.SealHash(header).Bytes(), header.Nonce.Uint64())
 
 	// Verify the calculated values against the ones provided in the header
-	if !bytes.Equal(header.MixDigest[:], digest) {
-		return errInvalidMixDigest
-	}
+	//if !bytes.Equal(header.MixDigest[:], digest) {
+	//	return errInvalidMixDigest
+	//}
 	target := new(big.Int).Div(two256, header.Difficulty)
 	if factor != nil && factor.Sign() > 0 {
 		target = new(big.Int).Div(target, factor)
@@ -440,7 +438,6 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash common.Hash) {
 
 	rlp.Encode(hasher, []interface{}{
 		header.ParentHash,
-		//header.UncleHash,
 		header.Coinbase,
 		header.Root,
 		header.TxHash,
