@@ -38,15 +38,14 @@ func TestTestMode(t *testing.T) {
 	defer ethash.Close()
 
 	results := make(chan *types.Block)
-	err := ethash.Seal(nil, types.NewBlockWithHeader(header), results, nil)
+	err := ethash.Seal(nil, nil, nil, types.NewBlockWithHeader(header), results, nil)
 	if err != nil {
 		t.Fatalf("failed to seal block: %v", err)
 	}
 	select {
 	case block := <-results:
 		header.Nonce = types.EncodeNonce(block.Nonce())
-		header.MixDigest = block.MixDigest()
-		if err := ethash.verifySeal(nil, header, false); err != nil {
+		if err := ethash.verifySeal(nil, header, nil); err != nil {
 			t.Fatalf("unexpected verification error: %v", err)
 		}
 	case <-time.NewTimer(4 * time.Second).C:
