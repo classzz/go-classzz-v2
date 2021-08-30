@@ -307,9 +307,9 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 		GasUsed:    g.GasUsed,
 		BaseFee:    g.BaseFee,
 		Difficulty: g.Difficulty,
-		MixDigest:  g.Mixhash,
-		Coinbase:   g.Coinbase,
-		Root:       root,
+		//MixDigest:  g.Mixhash,
+		Coinbase: g.Coinbase,
+		Root:     root,
 	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit

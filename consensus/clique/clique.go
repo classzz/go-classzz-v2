@@ -281,9 +281,9 @@ func (c *Clique) verifyHeader(chain consensus.ChainHeaderReader, header *types.H
 		return errInvalidCheckpointSigners
 	}
 	// Ensure that the mix digest is zero as we don't have fork protection currently
-	if header.MixDigest != (common.Hash{}) {
-		return errInvalidMixDigest
-	}
+	//if header.MixDigest != (common.Hash{}) {
+	//	return errInvalidMixDigest
+	//}
 	// Ensure that the block doesn't contain any uncles which are meaningless in PoA
 	//if header.UncleHash != uncleHash {
 	//	return errInvalidUncleHash
@@ -553,7 +553,7 @@ func (c *Clique) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	header.Extra = append(header.Extra, make([]byte, extraSeal)...)
 
 	// Mix digest is reserved for now, set to empty
-	header.MixDigest = common.Hash{}
+	//header.MixDigest = common.Hash{}
 
 	// Ensure the timestamp has the correct delay
 	parent := chain.GetHeader(header.ParentHash, number-1)
@@ -743,7 +743,7 @@ func encodeSigHeader(w io.Writer, header *types.Header) {
 		header.GasUsed,
 		header.Time,
 		header.Extra[:len(header.Extra)-crypto.SignatureLength], // Yes, this will panic if extra is too short
-		header.MixDigest,
+		//header.MixDigest,
 		header.Nonce,
 	}
 	if header.BaseFee != nil {

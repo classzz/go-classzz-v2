@@ -1184,7 +1184,7 @@ func RPCMarshalHeader(head *types.Header, engine consensus.Engine) map[string]in
 		"hash":       head.Hash(),
 		"parentHash": head.ParentHash,
 		"nonce":      head.Nonce,
-		"mixHash":    head.MixDigest,
+		//"mixHash":    head.MixDigest,
 		//"sha3Uncles":       head.UncleHash,
 		"logsBloom":        head.Bloom,
 		"stateRoot":        head.Root,
