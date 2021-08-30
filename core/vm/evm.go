@@ -43,7 +43,7 @@ type (
 
 func (evm *EVM) precompile(addr common.Address) (PrecompiledContract, bool) {
 	var precompiles map[common.Address]PrecompiledContract
-	precompiles = PrecompiledContractsBerlin
+	precompiles = PrecompiledContracts
 	p, ok := precompiles[addr]
 	return p, ok
 }

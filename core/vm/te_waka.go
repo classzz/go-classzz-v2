@@ -43,8 +43,11 @@ const (
 )
 
 var (
-	baseUnit = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	Int10    = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	baseUnit  = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	Int10     = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	fbaseUnit = new(big.Float).SetFloat64(float64(baseUnit.Int64()))
+	mixImpawn = new(big.Int).Mul(big.NewInt(1000), baseUnit)
+	Base      = new(big.Int).SetUint64(10000)
 
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
@@ -318,8 +321,9 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
-	item.ID = big.NewInt(rand.New(rand.NewSource(time.Now().Unix())).Int63())
 	item.Committee = tewaka.GetCommittee()
+	IDHash := common.RlpHash(item)
+	item.ID = new(big.Int).SetBytes(IDHash[:])
 
 	t2 := time.Now()
 
@@ -495,8 +499,9 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
-	item.ID = big.NewInt(rand.New(rand.NewSource(time.Now().Unix())).Int63())
 	item.Committee = tewaka.GetCommittee()
+	IDHash := common.RlpHash(item)
+	item.ID = new(big.Int).SetBytes(IDHash[:])
 
 	t2 := time.Now()
 	tewaka.Convert(item)
