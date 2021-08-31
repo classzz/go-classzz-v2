@@ -12,7 +12,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"io"
 	"math/big"
-	"math/rand"
 )
 
 var IC *PledgeCache
@@ -200,8 +199,8 @@ func (twi *TeWakaImpl) GetStakingByUser(address common.Address) *big.Int {
 	return sumAmount
 }
 
-func (twi *TeWakaImpl) GetCommittee() common.Address {
-	return twi.PledgeInfos[rand.Intn(len(twi.PledgeInfos))].Address
+func (twi *TeWakaImpl) GetCommittee(rand *big.Int) common.Address {
+	return twi.PledgeInfos[rand.Int64()%int64(len(twi.PledgeInfos))].Address
 }
 
 func (twi *TeWakaImpl) KeepItemsByEpoch(state StateDB) error {

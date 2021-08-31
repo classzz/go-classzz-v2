@@ -169,16 +169,6 @@ func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, head
 	return ethash.verifyHeader(chain, headers[index], parent, seals[index], unixNow, factor)
 }
 
-// VerifyUncles verifies that the given block's uncles conform to the consensus
-// rules of the stock Classzz ethash engine.
-//func (ethash *Ethash) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-//	// If we're running a full engine faking, accept any input as valid
-//	if ethash.config.PowMode == ModeFullFake {
-//		return nil
-//	}
-//	return nil
-//}
-
 // verifyHeader checks whether a header conforms to the consensus rules of the
 // stock Classzz ethash engine.
 // See YP section 4.3.4. "Block Header Validity"
