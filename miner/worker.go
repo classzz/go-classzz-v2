@@ -18,6 +18,7 @@ package miner
 
 import (
 	"errors"
+	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -149,10 +150,10 @@ type worker struct {
 	resubmitIntervalCh chan time.Duration
 	resubmitAdjustCh   chan *intervalAdjust
 
-	current      *environment                 // An environment for current running cycle.
-	localUncles  map[common.Hash]*types.Block // A set of side blocks generated locally as the possible uncle blocks.
-	remoteUncles map[common.Hash]*types.Block // A set of side blocks as the possible uncle blocks.
-	unconfirmed  *unconfirmedBlocks           // A set of locally mined blocks pending canonicalness confirmations.
+	current *environment // An environment for current running cycle.
+	//localUncles  map[common.Hash]*types.Block // A set of side blocks generated locally as the possible uncle blocks.
+	//remoteUncles map[common.Hash]*types.Block // A set of side blocks as the possible uncle blocks.
+	unconfirmed *unconfirmedBlocks // A set of locally mined blocks pending canonicalness confirmations.
 
 	mu       sync.RWMutex // The lock used to protect the coinbase and extra fields
 	coinbase common.Address
@@ -455,19 +456,20 @@ func (w *worker) mainLoop() {
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
+			fmt.Println(ev.Block.Hash())
 			// Short circuit for duplicate side blocks
-			if _, exist := w.localUncles[ev.Block.Hash()]; exist {
-				continue
-			}
-			if _, exist := w.remoteUncles[ev.Block.Hash()]; exist {
-				continue
-			}
-			// Add side block to possible uncle block set depending on the author.
-			if w.isLocalBlock != nil && w.isLocalBlock(ev.Block) {
-				w.localUncles[ev.Block.Hash()] = ev.Block
-			} else {
-				w.remoteUncles[ev.Block.Hash()] = ev.Block
-			}
+			//if _, exist := w.localUncles[ev.Block.Hash()]; exist {
+			//	continue
+			//}
+			//if _, exist := w.remoteUncles[ev.Block.Hash()]; exist {
+			//	continue
+			//}
+			//// Add side block to possible uncle block set depending on the author.
+			//if w.isLocalBlock != nil && w.isLocalBlock(ev.Block) {
+			//	w.localUncles[ev.Block.Hash()] = ev.Block
+			//} else {
+			//	w.remoteUncles[ev.Block.Hash()] = ev.Block
+			//}
 			// If our mining block contains less than 2 uncle blocks,
 			// add the new uncle block if valid and regenerate a mining block.
 			//if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
