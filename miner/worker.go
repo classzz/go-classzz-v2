@@ -469,7 +469,7 @@ func (w *worker) mainLoop() {
 			//	w.localUncles[ev.Block.Hash()] = ev.Block
 			//} else {
 			//	w.remoteUncles[ev.Block.Hash()] = ev.Block
-			//}
+			//}admin.addPeer("enode://83b3f266758f3f9bd241880eb3efd1a676c1d369c82ff633fb6b69e38b48a4bec2dbecd8539f891df30903f6e2c8bfdc9649e847c9f484f410aae03b883b02ae@192.168.6.100:32668")
 			// If our mining block contains less than 2 uncle blocks,
 			// add the new uncle block if valid and regenerate a mining block.
 			//if w.isRunning() && w.current != nil && w.current.uncles.Cardinality() < 2 {
