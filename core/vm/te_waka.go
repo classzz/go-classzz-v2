@@ -53,18 +53,18 @@ var (
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
 	CoinPools     = map[uint8]common.Address{
-		ExpandedTxConvert_ECzz: {101},
-		ExpandedTxConvert_HCzz: {102},
-		ExpandedTxConvert_BCzz: {103},
-		ExpandedTxConvert_OCzz: {104},
-		ExpandedTxConvert_PCzz: {105},
+		ExpandedTxConvert_ECzz: common.BytesToAddress([]byte{101}),
+		ExpandedTxConvert_HCzz: common.BytesToAddress([]byte{102}),
+		ExpandedTxConvert_BCzz: common.BytesToAddress([]byte{103}),
+		ExpandedTxConvert_OCzz: common.BytesToAddress([]byte{104}),
+		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0xB55c0fF37E2bA3Fd36AA03881373495A563E723c"
+	ethPoolAddr  = "0x089F49D3d61aBB29967644b2a5B0cA162b337e52"
 	hecoPoolAddr = "0x486c75523eC8A6797d66eD7Bf41F5079DCfDE185"
 	bscPoolAddr  = ""
 
-	burnTopics = "0xd9ea7526cdb50f406e2429329000efebfed52962417d0ec902ab8ba0c3bc5f71"
+	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
 	mintTopics = "0x8fb5c7bffbb272c541556c455c74269997b816df24f56dd255c2391d92d4f1e9"
 )
 
@@ -352,7 +352,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.RouterAddr, item.PubKey, item.Amount, item.FeeAmount, item.IsInsurance, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.RouterAddr, item.PubKey, item.Amount, item.FeeAmount, item.Slippage, item.IsInsurance, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -527,7 +527,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["casting"]
-	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.Path, item.PubKey, item.Amount, item.FeeAmount, item.RouterAddr, item.IsInsurance, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.Path, item.PubKey, item.Amount, item.FeeAmount, item.RouterAddr, item.Slippage, item.IsInsurance, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -580,13 +580,15 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	logs := struct {
-		Address     common.Address
-		Amount      *big.Int
-		ConvertType *big.Int
-		ToPath      []common.Address
-		RouterAddr  common.Address
-		IsInsurance bool
-		Extra       []byte
+		From         common.Address
+		AmountIn     *big.Int
+		AmountOut    *big.Int
+		ConvertType  *big.Int
+		ToPath       []common.Address
+		ToRouterAddr common.Address
+		Slippage     *big.Int
+		IsInsurance  bool
+		Extra        []byte
 	}{}
 
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
@@ -594,17 +596,17 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	amountPool := evm.StateDB.GetBalance(CoinPools[AssetType])
-	TxAmount := new(big.Int).Mul(logs.Amount, Int10)
+	TxAmount := new(big.Int).Mul(logs.AmountOut, Int10)
 	if TxAmount.Cmp(amountPool) > 0 {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) tx amount [%d] > pool [%d]", netName, TxAmount.Uint64(), amountPool)
 	}
 
-	if _, ok := CoinPools[uint8(logs.Ntype.Uint64())]; !ok && uint8(logs.Ntype.Uint64()) != 0 {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ConvertType is [%d] CoinPools not find", netName, logs.Ntype.Uint64())
+	if _, ok := CoinPools[uint8(logs.ConvertType.Uint64())]; !ok && uint8(logs.ConvertType.Uint64()) != 0 {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ConvertType is [%d] CoinPools not find", netName, logs.ConvertType.Uint64())
 	}
 
-	if AssetType == uint8(logs.Ntype.Uint64()) {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, logs.Ntype.Uint64())
+	if AssetType == uint8(logs.ConvertType.Uint64()) {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, logs.ConvertType.Uint64())
 	}
 
 	var extTx *types.Transaction
@@ -661,13 +663,14 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 
 	item := &types.ConvertItem{
 		AssetType:   AssetType,
-		ConvertType: uint8(logs.Ntype.Uint64()),
+		ConvertType: uint8(logs.ConvertType.Uint64()),
 		TxHash:      TxHash,
 		PubKey:      pk,
-		Amount:      logs.Amount,
+		Amount:      logs.AmountOut,
 		Path:        logs.ToPath,
-		RouterAddr:  logs.RouterAddr,
+		RouterAddr:  logs.ToRouterAddr,
 		IsInsurance: logs.IsInsurance,
+		Slippage:    logs.Slippage,
 		Extra:       logs.Extra,
 	}
 
@@ -706,10 +709,11 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	}
 
 	logs := struct {
-		To       common.Address
-		Amount   *big.Int
-		Mid      *big.Int
-		AmountIn *big.Int
+		To        common.Address
+		Mid       *big.Int
+		Gas       *big.Int
+		AmountIn  *big.Int
+		AmountOut *big.Int
 	}{}
 
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "MintToken", txLog.Data); err != nil {
@@ -748,7 +752,7 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 
 	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
 	if logs.AmountIn.Cmp(amount2) != 0 {
-		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.Amount, amount2)
+		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
 	}
 
 	var extTx *types.Transaction
@@ -808,227 +812,278 @@ func deriveChainId(v *big.Int) *big.Int {
 
 const TeWakaABI = `
 [
-  {
-    "name": "mortgage",
-    "inputs": [
-	  {
-        "type": "address",
-        "name": "toAddress"
-      },
-      {
-        "type": "uint256",
-        "unit": "wei",
-        "name": "stakingAmount"
-      },
-      {
-        "type": "address[]",
-        "name": "coinBaseAddress"
-      }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "mortgage",
-    "outputs": [],
-    "inputs": [
-      {
-        "type": "address",
-        "name": "toAddress"
-      },
-      {
-        "type": "uint256",
-        "unit": "wei",
-        "name": "stakingAmount"
-      },
-      {
-        "type": "address[]",
-        "name": "coinBaseAddress"
-      }
-    ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
-  }, {
-    "name": "update",
-    "inputs": [
-      {
-        "type": "address[]",
-        "name": "coinBaseAddress"
-      }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "update",
-    "outputs": [],
-    "inputs": [
-      {
-        "type": "address[]",
-        "name": "coinBaseAddress"
-      }
-    ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
-  }, 
-{
-    "name": "convert",
-    "inputs": [
-       {
-        "type": "uint256",
-        "name": "ID"
-      },{
-        "type": "uint256",
-        "name": "AssetType"
-      },{
-        "type": "uint256",
-        "name": "ConvertType"
-      },{
-        "type": "string",
-        "name": "TxHash"
-      },{
-        "type": "address[]",
-        "name": "Path"
-      },{
-        "type": "address",
-        "name": "RouterAddr"
-      },{
-        "type": "bytes",
-        "name": "PubKey"
-      },{
-        "type": "uint256",
-        "name": "Amount"
-      },{
-        "type": "uint256",
-        "name": "FeeAmount"
-      },{
-	"type": "bool",
-	"name": "IsInsurance"
-      },{
-        "type": "bytes",
-        "name": "Extra"
-      }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "convert",
-    "outputs": [],
-    "inputs": [
-      {
-        "type": "uint256",
-        "name": "AssetType"
-      },{
-        "type": "string",
-        "name": "TxHash"
-      }
-    ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
-  },
-{
-    "name": "confirm",
-    "inputs": [
-     {
-        "type": "uint256",
-        "name": "ID"
-	 },{
-        "type": "uint256",
-        "name": "AssetType"
-     },{
-        "type": "uint256",
-        "name": "ConvertType"
-     },{
-        "type": "string",
-        "name": "TxHash"
-     }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "confirm",
-    "outputs": [],
-    "inputs": [
-      {
-        "type": "uint256",
-        "name": "ConvertType"
-      },{
-        "type": "string",
-        "name": "TxHash"
-      }
-    ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
-  },
-{
-    "name": "casting",
-    "inputs": [
-      {
-        "type": "uint256",
-        "name": "ID"
-      },{
-        "type": "uint256",
-        "name": "ConvertType"
-      },{
-        "type": "address[]",
-        "name": "Path"
-      },{
-        "type": "bytes",
-        "name": "PubKey"
-      },{
-        "type": "uint256",
-        "name": "Amount"
-      },{
-        "type": "uint256",
-        "name": "FeeAmount"
-      },{
-        "type": "address",
-        "name": "RouterAddr"
-      },{
-	"type": "bool",
-	"name": "IsInsurance"
-      },{
-        "type": "bytes",
-        "name": "Extra"
-      }
-    ],
-    "anonymous": false,
-    "type": "event"
-  },
-  {
-    "name": "casting",
-    "outputs": [],
-    "inputs": [
-       {
-        "type": "uint256",
-        "name": "ConvertType"
-      },{
-        "type": "uint256",
-        "name": "Amount"
-      },{
-        "type": "address[]",
-        "name": "Path"
-      },{
-        "type": "bytes",
-        "name": "PubKey"
-      },{
-        "type": "address",
-        "name": "RouterAddr"
-      },{
-	"type": "bool",
-	"name": "IsInsurance"
-      }
-    ],
-    "constant": false,
-    "payable": false,
-    "type": "function"
-  }
+    {
+        "name":"mortgage",
+        "inputs":[
+            {
+                "type":"address",
+                "name":"toAddress"
+            },
+            {
+                "type":"uint256",
+                "unit":"wei",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"mortgage",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"address",
+                "name":"toAddress"
+            },
+            {
+                "type":"uint256",
+                "unit":"wei",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"update",
+        "inputs":[
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"update",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"convert",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"uint256",
+                "name":"FeeAmount"
+            },
+            {
+                "type":"uint256",
+                "name":"Slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            },
+            {
+                "type":"bytes",
+                "name":"Extra"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"convert",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"confirm",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"confirm",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"casting",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"uint256",
+                "name":"FeeAmount"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"uint256",
+                "name":"slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            },
+            {
+                "type":"bytes",
+                "name":"Extra"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"casting",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"uint256",
+                "name":"slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    }
 ]
 `
 
@@ -1038,45 +1093,39 @@ const CzzRouterABI = `
 		"anonymous": false,
 		"inputs": [
 			{
-				"indexed": true,
-				"internalType": "address",
-				"name": "to",
+				"name": "from_",
 				"type": "address"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "amount",
+				"name": "amountIn",
 				"type": "uint256"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
-				"name": "ntype",
+				"name": "amountOut",
 				"type": "uint256"
 			},
 			{
-				"indexed": false,
-				"internalType": "address[]",
+				"name": "convertType",
+				"type": "uint256"
+			},
+			{
 				"name": "toPath",
 				"type": "address[]"
 			},
 			{
-				"indexed": false,
-				"internalType": "address",
-				"name": "RouterAddr",
+				"name": "toRouterAddr",
 				"type": "address"
 			},
 			{
-				"indexed": false,
-				"internalType": "bool",
-				"name": "IsInsurance",
+				"name": "slippage",
+				"type": "uint256"
+			},
+			{
+				"name": "isInsurance",
 				"type": "bool"
 			},
 			{
-				"indexed": false,
-				"internalType": "bytes",
-				"name": "Extra",
+				"name": "extra",
 				"type": "bytes"
 			}
 		],
@@ -1087,26 +1136,22 @@ const CzzRouterABI = `
 		"anonymous": false,
 		"inputs": [
 			{
-				"indexed": true,
-				"internalType": "address",
 				"name": "to",
 				"type": "address"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
 				"name": "mid",
 				"type": "uint256"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
+				"name": "gas",
+				"type": "uint256"
+			},
+			{
 				"name": "amountIn",
 				"type": "uint256"
 			},
 			{
-				"indexed": false,
-				"internalType": "uint256",
 				"name": "amountOut",
 				"type": "uint256"
 			}

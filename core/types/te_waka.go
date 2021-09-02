@@ -65,6 +65,7 @@ type ConvertItem struct {
 	FeeAmount   *big.Int         `json:"fee_amount"`
 	Path        []common.Address `json:"path"`
 	RouterAddr  common.Address   `json:"router_addr"`
+	Slippage    *big.Int         `json:"slippage"`
 	IsInsurance bool             `json:"is_insurance"`
 	Extra       []byte           `json:"extra"`
 }
@@ -79,6 +80,7 @@ type extConvertItem struct {
 	FeeAmount   *big.Int         `json:"fee_amount"`
 	Path        []common.Address `json:"path"`
 	RouterAddr  common.Address   `json:"router_addr"`
+	Slippage    *big.Int         `json:"slippage"`
 	IsInsurance bool             `json:"is_insurance"`
 	Extra       []byte           `json:"extra"`
 }
@@ -88,7 +90,7 @@ func (ci *ConvertItem) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&eci); err != nil {
 		return err
 	}
-	ci.ID, ci.AssetType, ci.ConvertType, ci.TxHash, ci.PubKey, ci.Amount, ci.FeeAmount, ci.Path, ci.RouterAddr, ci.IsInsurance, ci.Extra = eci.ID, eci.AssetType, eci.ConvertType, eci.TxHash, eci.PubKey, eci.Amount, eci.FeeAmount, eci.Path, eci.RouterAddr, eci.IsInsurance, eci.Extra
+	ci.ID, ci.AssetType, ci.ConvertType, ci.TxHash, ci.PubKey, ci.Amount, ci.FeeAmount, ci.Path, ci.RouterAddr, ci.Slippage, ci.IsInsurance, ci.Extra = eci.ID, eci.AssetType, eci.ConvertType, eci.TxHash, eci.PubKey, eci.Amount, eci.FeeAmount, eci.Path, eci.RouterAddr, eci.Slippage, eci.IsInsurance, eci.Extra
 	return nil
 }
 
@@ -103,6 +105,7 @@ func (ci *ConvertItem) EncodeRLP(w io.Writer) error {
 		FeeAmount:   ci.FeeAmount,
 		Path:        ci.Path,
 		RouterAddr:  ci.RouterAddr,
+		Slippage:    ci.Slippage,
 		IsInsurance: ci.IsInsurance,
 		Extra:       ci.Extra,
 	})
@@ -118,6 +121,7 @@ func (ci *ConvertItem) Clone() *ConvertItem {
 		Amount:      new(big.Int).Set(ci.Amount),
 		FeeAmount:   new(big.Int).Set(ci.FeeAmount),
 		RouterAddr:  common.HexToAddress(ci.RouterAddr.String()),
+		Slippage:    new(big.Int).Set(ci.Slippage),
 		IsInsurance: ci.IsInsurance,
 		Extra:       CopyVotePk(ci.Extra),
 	}
@@ -135,6 +139,7 @@ func (ci *ConvertItem) Hash() common.Hash {
 		TxHash:      ci.TxHash,
 		Amount:      new(big.Int).Set(ci.Amount),
 		RouterAddr:  common.HexToAddress(ci.RouterAddr.String()),
+		Slippage:    ci.Slippage,
 		IsInsurance: ci.IsInsurance,
 		Extra:       CopyVotePk(ci.Extra),
 	}

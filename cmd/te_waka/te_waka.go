@@ -34,11 +34,11 @@ var (
 )
 
 var (
-	abiStaking, _ = abi.JSON(strings.NewReader(vm.TeWakaABI))
-	priKey        *ecdsa.PrivateKey
-	from          common.Address
-	czzValue      uint64
-	holder        common.Address
+	abiStaking, abcasd = abi.JSON(strings.NewReader(vm.TeWakaABI))
+	priKey             *ecdsa.PrivateKey
+	from               common.Address
+	czzValue           uint64
+	holder             common.Address
 )
 
 const (
@@ -200,6 +200,7 @@ func queryTx(conn *czzclient.Client, txHash common.Hash, contract bool, pending 
 }
 
 func packInput(abiMethod string, params ...interface{}) []byte {
+	fmt.Println(abcasd)
 	input, err := abiStaking.Pack(abiMethod, params...)
 	if err != nil {
 		printError(abiMethod, " error ", err)

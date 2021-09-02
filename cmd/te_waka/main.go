@@ -103,6 +103,10 @@ var (
 			Usage: "",
 			Value: "",
 		},
+		cli.Uint64Flag{
+			Name:  "casting.slippage",
+			Usage: "",
+		},
 		cli.StringFlag{
 			Name:  "casting.routeraddr",
 			Usage: "",

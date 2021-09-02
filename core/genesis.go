@@ -281,8 +281,8 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 	consensus.OnceInitImpawnState(g.Config, statedb)
 	impl := vm.NewTeWakaImpl()
 	for _, member := range g.Committee {
-		impl.Mortgage(member.StakeBase, vm.TeWaKaAddress, member.Pubkey, member.Amount, nil)
-		vm.GenesisLockedBalance(statedb, member.StakeBase, vm.TeWaKaAddress, member.Amount)
+		impl.Mortgage(member.Coinbase, member.StakeBase, member.Pubkey, member.Amount, nil)
+		vm.GenesisLockedBalance(statedb, member.Coinbase, member.StakeBase, member.Amount)
 	}
 	err = impl.Save(statedb, vm.TeWaKaAddress)
 	if err != nil {
@@ -385,18 +385,15 @@ func DefaultTestnetGenesisBlock() *Genesis {
 	key3 := hexutil.MustDecode("0x04bfd74dc8e5a30c1352827a1ac5f2aa528940ef24e3ff91b9ca9932ae0a63dad094ab8c833aeda5a306324cd0b6bfda298ca9b4ec568a8817724bcb8189ffd75c")
 
 	return &Genesis{
-		Config:     params.TestnetChainConfig,
-		Timestamp:  0x6027dd2e,
-		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		Config:    params.TestnetChainConfig,
+		Timestamp: 0x5D18A43F,
+		//ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(10240),
 		Alloc: map[common.Address]GenesisAccount{
-			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)},        // ECRecover
-			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)},        // SHA256
-			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)},        // RIPEMD
-			common.BytesToAddress([]byte{101}):                                {Balance: new(big.Int).Set(i2)}, // eth
-			common.BytesToAddress([]byte{102}):                                {Balance: new(big.Int).Set(i2)}, // heco
-			common.BytesToAddress([]byte{103}):                                {Balance: new(big.Int).Set(i2)}, // bsc
+			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)}, // ECRecover
+			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)}, // SHA256
+			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)}, // RIPEMD
 			common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"): {Balance: new(big.Int).Set(i1)},
 			common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"): {Balance: new(big.Int).Set(i1)},
 			common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"): {Balance: new(big.Int).Set(i1)},
