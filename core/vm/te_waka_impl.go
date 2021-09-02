@@ -127,7 +127,6 @@ func (i *TeWakaImpl) Load(state StateDB, preAddress common.Address) error {
 	if lenght == 0 {
 		return errors.New("Load data = 0")
 	}
-	// cache := true
 	hash := common.RlpHash(data)
 	var temp TeWakaImpl
 	if cc, ok := IC.Cache.Get(hash); ok {
@@ -142,7 +141,6 @@ func (i *TeWakaImpl) Load(state StateDB, preAddress common.Address) error {
 		if tmp != nil {
 			IC.Cache.Add(hash, tmp)
 		}
-		// cache = false
 	}
 	i.PledgeInfos, i.ConvertItems, i.UsedItems = temp.PledgeInfos, temp.ConvertItems, temp.UsedItems
 	return nil
@@ -162,7 +160,6 @@ func (twi *TeWakaImpl) Mortgage(address common.Address, to common.Address, pubKe
 }
 
 func (twi *TeWakaImpl) Update(address common.Address, cba []common.Address) {
-
 	for _, v := range twi.PledgeInfos {
 		if bytes.Equal(v.Address[:], address[:]) {
 			v.CoinBaseAddress = cba
@@ -195,12 +192,7 @@ func (twi *TeWakaImpl) GetStakingByUser(address common.Address) *big.Int {
 			}
 		}
 	}
-
 	return sumAmount
-}
-
-func (twi *TeWakaImpl) GetCommittee(rand *big.Int) common.Address {
-	return twi.PledgeInfos[rand.Int64()%int64(len(twi.PledgeInfos))].Address
 }
 
 func (twi *TeWakaImpl) KeepItemsByEpoch(state StateDB) error {

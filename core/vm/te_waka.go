@@ -40,6 +40,7 @@ const (
 	ExpandedTxConvert_HCzz
 	ExpandedTxConvert_BCzz
 	ExpandedTxConvert_OCzz
+	ExpandedTxConvert_PCzz
 )
 
 var (
@@ -52,16 +53,16 @@ var (
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
 	CoinPools     = map[uint8]common.Address{
-		ExpandedTxConvert_ECzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 101},
-		ExpandedTxConvert_HCzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 102},
-		ExpandedTxConvert_BCzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 103},
-		ExpandedTxConvert_OCzz: {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 104},
+		ExpandedTxConvert_ECzz: {101},
+		ExpandedTxConvert_HCzz: {102},
+		ExpandedTxConvert_BCzz: {103},
+		ExpandedTxConvert_OCzz: {104},
+		ExpandedTxConvert_PCzz: {105},
 	}
 
 	ethPoolAddr  = "0xB55c0fF37E2bA3Fd36AA03881373495A563E723c"
 	hecoPoolAddr = "0x486c75523eC8A6797d66eD7Bf41F5079DCfDE185"
 	bscPoolAddr  = ""
-	okexPoolAddr = ""
 
 	burnTopics = "0xd9ea7526cdb50f406e2429329000efebfed52962417d0ec902ab8ba0c3bc5f71"
 	mintTopics = "0x8fb5c7bffbb272c541556c455c74269997b816df24f56dd255c2391d92d4f1e9"
@@ -135,6 +136,7 @@ func logN(evm *EVM, contract *Contract, topics []common.Hash, data []byte) ([]by
 	})
 	return nil, nil
 }
+
 func GenesisLockedBalance(db StateDB, from, to common.Address, amount *big.Int) {
 	db.SubBalance(from, amount)
 	db.AddBalance(to, amount)
@@ -313,16 +315,15 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
-	case ExpandedTxConvert_OCzz:
-		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, TxHash); err != nil {
-			return nil, err
-		}
+		//case ExpandedTxConvert_OCzz:
+		//	client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
+		//	if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, TxHash); err != nil {
+		//		return nil, err
+		//	}
 	}
 
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
-	item.Committee = tewaka.GetCommittee(new(big.Int).SetBytes(contract.CodeHash[:5]))
-	IDHash := common.RlpHash(item)
+	IDHash := item.Hash()
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 	t2 := time.Now()
 
@@ -351,7 +352,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["convert"]
-	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.RouterAddr, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.AssetType, big.NewInt(int64(item.ConvertType)), item.TxHash.String(), item.Path, item.RouterAddr, item.PubKey, item.Amount, item.FeeAmount, item.IsInsurance, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -421,11 +422,11 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
-	case ExpandedTxConvert_OCzz:
-		client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, ConvertType, TxHash); err != nil {
-			return nil, err
-		}
+		//case ExpandedTxConvert_OCzz:
+		//	client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
+		//	if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, ConvertType, TxHash); err != nil {
+		//		return nil, err
+		//	}
 	}
 
 	t2 := time.Now()
@@ -442,7 +443,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["confirm"]
-	logData, err := event.Inputs.Pack(item.ID, big.NewInt(int64(item.AssetType)), args.ConvertType, item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, big.NewInt(int64(item.AssetType)), args.ConvertType, args.TxHash)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -471,6 +472,9 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		ConvertType *big.Int
 		Amount      *big.Int
 		Path        []common.Address
+		PubKey      []byte
+		RouterAddr  common.Address
+		IsInsurance bool
 	}{}
 
 	method, _ := AbiTeWaKa.Methods["casting"]
@@ -483,33 +487,36 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
+	if have, want := evm.StateDB.GetBalance(from), args.Amount; have.Cmp(want) < 0 {
+		return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
+	}
+
+	evm.StateDB.SubBalance(from, args.Amount)
+
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
 	if err != nil {
 		log.Error("Staking load error", "error", err)
 		return nil, err
 	}
+
 	ConvertType := uint8(args.ConvertType.Uint64())
 
 	item := &types.ConvertItem{
 		ConvertType: ConvertType,
 		Path:        args.Path,
 		Amount:      args.Amount,
+		PubKey:      args.PubKey,
+		RouterAddr:  args.RouterAddr,
+		IsInsurance: args.IsInsurance,
 	}
 
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
-	item.Committee = tewaka.GetCommittee(new(big.Int).SetBytes(contract.CodeHash[:5]))
-	IDHash := common.RlpHash(item)
+	IDHash := item.Hash()
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 
 	t2 := time.Now()
 	tewaka.Convert(item)
-
-	if have, want := evm.StateDB.GetBalance(from), args.Amount; have.Cmp(want) < 0 {
-		return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
-	}
-
-	evm.StateDB.SubBalance(from, item.Amount)
 
 	t3 := time.Now()
 	err = tewaka.Save(evm.StateDB, TeWaKaAddress)
@@ -520,7 +527,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["casting"]
-	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.TxHash.String(), item.Path, item.PubKey, item.Committee, item.Amount, item.FeeAmount, item.Extra)
+	logData, err := event.Inputs.Pack(item.ID, args.ConvertType, item.Path, item.PubKey, item.Amount, item.FeeAmount, item.RouterAddr, item.IsInsurance, item.Extra)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -573,12 +580,13 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	logs := struct {
-		Address    common.Address
-		Amount     *big.Int
-		Ntype      *big.Int
-		ToPath     []common.Address
-		RouterAddr common.Address
-		Extra      []byte
+		Address     common.Address
+		Amount      *big.Int
+		ConvertType *big.Int
+		ToPath      []common.Address
+		RouterAddr  common.Address
+		IsInsurance bool
+		Extra       []byte
 	}{}
 
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
@@ -617,11 +625,13 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		if !strings.Contains(bscPoolAddr, extTx.To().String()) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
-	} else if AssetType == ExpandedTxConvert_OCzz {
-		if !strings.Contains(bscPoolAddr, extTx.To().String()) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
-		}
 	}
+
+	//else if AssetType == ExpandedTxConvert_OCzz {
+	//	if !strings.Contains(bscPoolAddr, extTx.To().String()) {
+	//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+	//	}
+	//}
 
 	Vb, R, S := extTx.RawSignatureValues()
 	var V byte
@@ -657,6 +667,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		Amount:      logs.Amount,
 		Path:        logs.ToPath,
 		RouterAddr:  logs.RouterAddr,
+		IsInsurance: logs.IsInsurance,
 		Extra:       logs.Extra,
 	}
 
@@ -763,11 +774,12 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 		if !strings.Contains(bscPoolAddr, extTx.To().String()) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
 		}
-	} else if ConvertType == ExpandedTxConvert_OCzz {
-		if !strings.Contains(okexPoolAddr, extTx.To().String()) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Okex [ToAddress: %s] != [%s]", netName, extTx.To().String(), okexPoolAddr)
-		}
 	}
+	//else if ConvertType == ExpandedTxConvert_OCzz {
+	//	if !strings.Contains(okexPoolAddr, extTx.To().String()) {
+	//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Okex [ToAddress: %s] != [%s]", netName, extTx.To().String(), okexPoolAddr)
+	//	}
+	//}
 
 	return item, nil
 }
@@ -799,7 +811,7 @@ const TeWakaABI = `
   {
     "name": "mortgage",
     "inputs": [
-        {
+	  {
         "type": "address",
         "name": "toAddress"
       },
@@ -886,14 +898,14 @@ const TeWakaABI = `
         "type": "bytes",
         "name": "PubKey"
       },{
-        "type": "address",
-        "name": "Committee"
-      },{
         "type": "uint256",
         "name": "Amount"
       },{
         "type": "uint256",
         "name": "FeeAmount"
+      },{
+	"type": "bool",
+	"name": "IsInsurance"
       },{
         "type": "bytes",
         "name": "Extra"
@@ -924,34 +936,16 @@ const TeWakaABI = `
      {
         "type": "uint256",
         "name": "ID"
-      },{
+	 },{
         "type": "uint256",
         "name": "AssetType"
-      },{
+     },{
         "type": "uint256",
         "name": "ConvertType"
-      },{
+     },{
         "type": "string",
         "name": "TxHash"
-      },{
-        "type": "address[]",
-        "name": "Path"
-      },{
-        "type": "bytes",
-        "name": "PubKey"
-      },{
-        "type": "address",
-        "name": "Committee"
-      },{
-        "type": "uint256",
-        "name": "Amount"
-      },{
-        "type": "uint256",
-        "name": "FeeAmount"
-      },{
-        "type": "bytes",
-        "name": "Extra"
-      }
+     }
     ],
     "anonymous": false,
     "type": "event"
@@ -975,15 +969,12 @@ const TeWakaABI = `
 {
     "name": "casting",
     "inputs": [
-  {
+      {
         "type": "uint256",
         "name": "ID"
       },{
         "type": "uint256",
         "name": "ConvertType"
-      },{
-        "type": "string",
-        "name": "TxHash"
       },{
         "type": "address[]",
         "name": "Path"
@@ -991,14 +982,17 @@ const TeWakaABI = `
         "type": "bytes",
         "name": "PubKey"
       },{
-        "type": "address",
-        "name": "Committee"
-      },{
         "type": "uint256",
         "name": "Amount"
       },{
         "type": "uint256",
         "name": "FeeAmount"
+      },{
+        "type": "address",
+        "name": "RouterAddr"
+      },{
+	"type": "bool",
+	"name": "IsInsurance"
       },{
         "type": "bytes",
         "name": "Extra"
@@ -1013,13 +1007,22 @@ const TeWakaABI = `
     "inputs": [
        {
         "type": "uint256",
-        "name": "AssetType"
+        "name": "ConvertType"
       },{
         "type": "uint256",
         "name": "Amount"
       },{
         "type": "address[]",
         "name": "Path"
+      },{
+        "type": "bytes",
+        "name": "PubKey"
+      },{
+        "type": "address",
+        "name": "RouterAddr"
+      },{
+	"type": "bool",
+	"name": "IsInsurance"
       }
     ],
     "constant": false,
@@ -1066,6 +1069,12 @@ const CzzRouterABI = `
 			},
 			{
 				"indexed": false,
+				"internalType": "bool",
+				"name": "IsInsurance",
+				"type": "bool"
+			},
+			{
+				"indexed": false,
 				"internalType": "bytes",
 				"name": "Extra",
 				"type": "bytes"
@@ -1086,12 +1095,6 @@ const CzzRouterABI = `
 			{
 				"indexed": false,
 				"internalType": "uint256",
-				"name": "amount",
-				"type": "uint256"
-			},
-			{
-				"indexed": false,
-				"internalType": "uint256",
 				"name": "mid",
 				"type": "uint256"
 			},
@@ -1099,6 +1102,12 @@ const CzzRouterABI = `
 				"indexed": false,
 				"internalType": "uint256",
 				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountOut",
 				"type": "uint256"
 			}
 		],

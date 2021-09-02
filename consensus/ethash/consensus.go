@@ -377,10 +377,6 @@ func (ethash *Ethash) verifySeal(chain consensus.ChainHeaderReader, header *type
 	// If fast-but-heavy PoW verification was requested, use an ethash dataset
 	result = HashCZZ(ethash.SealHash(header).Bytes(), header.Nonce.Uint64())
 
-	// Verify the calculated values against the ones provided in the header
-	//if !bytes.Equal(header.MixDigest[:], digest) {
-	//	return errInvalidMixDigest
-	//}
 	target := new(big.Int).Div(two256, header.Difficulty)
 	if factor != nil && factor.Sign() > 0 {
 		target = new(big.Int).Div(target, factor)

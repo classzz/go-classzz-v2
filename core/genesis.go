@@ -284,14 +284,6 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 		impl.Mortgage(member.StakeBase, vm.TeWaKaAddress, member.Pubkey, member.Amount, nil)
 		vm.GenesisLockedBalance(statedb, member.StakeBase, vm.TeWaKaAddress, member.Amount)
 	}
-	//_, err := impl.DoElections(1, 0)
-	//if err != nil {
-	//	log.Error("ToFastBlock DoElections", "error", err)
-	//}
-	//err = impl.Shift(1, 0)
-	//if err != nil {
-	//	log.Error("ToFastBlock Shift", "error", err)
-	//}
 	err = impl.Save(statedb, vm.TeWaKaAddress)
 	if err != nil {
 		log.Error("ToFastBlock IMPL Save", "error", err)
@@ -307,9 +299,8 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 		GasUsed:    g.GasUsed,
 		BaseFee:    g.BaseFee,
 		Difficulty: g.Difficulty,
-		//MixDigest:  g.Mixhash,
-		Coinbase: g.Coinbase,
-		Root:     root,
+		Coinbase:   g.Coinbase,
+		Root:       root,
 	}
 	if g.GasLimit == 0 {
 		head.GasLimit = params.GenesisGasLimit
@@ -339,9 +330,6 @@ func (g *Genesis) Commit(db czzdb.Database) (*types.Block, error) {
 	if config == nil {
 		config = params.AllEthashProtocolChanges
 	}
-	//if err := config.CheckConfigForkOrder(); err != nil {
-	//	return nil, err
-	//}
 	rawdb.WriteTd(db, block.Hash(), block.NumberU64(), g.Difficulty)
 	rawdb.WriteBlock(db, block)
 	rawdb.WriteReceipts(db, block.Hash(), block.NumberU64(), nil)
@@ -387,16 +375,12 @@ func DefaultGenesisBlock() *Genesis {
 }
 
 func DefaultTestnetGenesisBlock() *Genesis {
-	// Full genesis: https://gist.github.com/holiman/c6ed9269dce28304ad176314caa75e97
 	i1 := new(big.Int).Mul(big.NewInt(990000000), big.NewInt(1e18))
 	i2 := new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
-	// priv1: 06c0fd9dbde37be5f5eb189f4239b1229fe6c57fde12f59c20dd14313c8bc418
 	// addr1: 0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B
 	key1 := hexutil.MustDecode("0x04e76d4d749766a5682f2b88bd0c4633fd2afc1ae183cb21203b321210271de6c498197f32e873586c7a8c32fb5606279466002bb09e99bed225bbe231312ac8e2")
-	// priv2: a13b4e65e4dfc53bf38091b38416140861ee46c85974a8e721d535495db05253
 	// addr2: 0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31
 	key2 := hexutil.MustDecode("0x0470aaf7409e2ff3ef0b3c776f103eb1761ac2949ad8750de10ce9f1b4b497666552542601f0e160b98d2f9057eb3b3e4755c0ed2872b0ad6e6f36b3685953eb1f")
-	// priv3: 8dd4002f948b2679811a2e187b67ab4cf2bfafc73dbcd5436dccea2bd8e77206
 	// addr3: 0xC85eF13F14f807954cA22bdA4919e06c838A079e
 	key3 := hexutil.MustDecode("0x04bfd74dc8e5a30c1352827a1ac5f2aa528940ef24e3ff91b9ca9932ae0a63dad094ab8c833aeda5a306324cd0b6bfda298ca9b4ec568a8817724bcb8189ffd75c")
 
@@ -405,7 +389,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Timestamp:  0x6027dd2e,
 		ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
 		GasLimit:   0x47b760,
-		Difficulty: big.NewInt(100),
+		Difficulty: big.NewInt(10240),
 		Alloc: map[common.Address]GenesisAccount{
 			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)},        // ECRecover
 			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)},        // SHA256

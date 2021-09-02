@@ -32,26 +32,6 @@ var (
 		Usage: "Staking value units one true",
 		Value: 0,
 	}
-	AddressFlag = cli.StringFlag{
-		Name:  "address",
-		Usage: "Transfer address",
-		Value: "",
-	}
-	TxHashFlag = cli.StringFlag{
-		Name:  "txhash",
-		Usage: "Input transaction hash",
-		Value: "",
-	}
-	PubKeyKeyFlag = cli.StringFlag{
-		Name:  "pubkey",
-		Usage: "",
-		Value: "",
-	}
-	BFTKeyKeyFlag = cli.StringFlag{
-		Name:  "bftkey",
-		Usage: "",
-		Value: "",
-	}
 
 	MortgageFlags = []cli.Flag{
 		cli.StringFlag{
@@ -104,7 +84,7 @@ var (
 
 	CastingFlags = []cli.Flag{
 		cli.Uint64Flag{
-			Name:  "casting.assettype",
+			Name:  "casting.converttype",
 			Usage: "",
 			Value: 0,
 		},
@@ -118,6 +98,20 @@ var (
 			Usage: "",
 			Value: "",
 		},
+		cli.StringFlag{
+			Name:  "casting.pubkey",
+			Usage: "",
+			Value: "",
+		},
+		cli.StringFlag{
+			Name:  "casting.routeraddr",
+			Usage: "",
+			Value: "",
+		},
+		cli.BoolFlag{
+			Name:  "casting.isinsurance",
+			Usage: "",
+		},
 	}
 
 	TeWakaFlags = []cli.Flag{
@@ -126,8 +120,6 @@ var (
 		utils.LegacyRPCListenAddrFlag,
 		utils.LegacyRPCPortFlag,
 		CzzValueFlag,
-		PubKeyKeyFlag,
-		BFTKeyKeyFlag,
 
 		MortgageFlags[0],
 		MortgageFlags[1],
@@ -143,6 +135,9 @@ var (
 		CastingFlags[0],
 		CastingFlags[1],
 		CastingFlags[2],
+		CastingFlags[3],
+		CastingFlags[4],
+		CastingFlags[5],
 	}
 )
 

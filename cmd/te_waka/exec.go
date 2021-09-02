@@ -123,11 +123,14 @@ func Casting(ctx *cli.Context) error {
 
 	conn, _ := dialConn(ctx)
 
-	AssetType := ctx.GlobalUint64(CastingFlags[0].GetName())
+	ConvertType := ctx.GlobalUint64(CastingFlags[0].GetName())
 	Amount := ctx.GlobalUint64(CastingFlags[1].GetName())
-	ToToken := ctx.GlobalString(CastingFlags[2].GetName())
+	Path := ctx.GlobalString(CastingFlags[2].GetName())
+	PubKey := ctx.GlobalString(CastingFlags[2].GetName())
+	RouterAddr := ctx.GlobalString(CastingFlags[2].GetName())
+	IsInsurance := ctx.GlobalString(CastingFlags[2].GetName())
 
-	input := packInput("casting", AssetType, Amount, ToToken)
+	input := packInput("casting", ConvertType, Amount, Path, PubKey, RouterAddr, IsInsurance)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 
