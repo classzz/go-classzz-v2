@@ -389,7 +389,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Timestamp: 0x5D18A43F,
 		//ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
 		GasLimit:   0x47b760,
-		Difficulty: big.NewInt(1000),
+		Difficulty: big.NewInt(10240),
 		Alloc: map[common.Address]GenesisAccount{
 			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)}, // ECRecover
 			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)}, // SHA256
