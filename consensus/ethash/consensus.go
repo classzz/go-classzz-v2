@@ -37,7 +37,7 @@ import (
 
 // Ethash proof-of-work protocol constants.
 var (
-	BlockReward                   = new(big.Int).Mul(big.NewInt(4e+18), big.NewInt(100)) // Block reward in wei for successfully mining a block
+	BlockReward                   = new(big.Int).Mul(big.NewInt(2e+18), big.NewInt(100)) // Block reward in wei for successfully mining a block
 	allowedFutureBlockTimeSeconds = int64(30)                                            // Max seconds from current time allowed for blocks, before they're considered future blocks
 
 	// calcDifficultyEip2384 is the difficulty adjustment algorithm as specified by EIP 2384.
