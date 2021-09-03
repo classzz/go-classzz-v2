@@ -18,7 +18,6 @@ package miner
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -456,7 +455,9 @@ func (w *worker) mainLoop() {
 			w.commitNewWork(req.interrupt, req.noempty, req.timestamp)
 
 		case ev := <-w.chainSideCh:
-			fmt.Println(ev.Block.Hash())
+			log.Debug("chain side", "number", ev.Block.Number(), "hash", ev.Block.Hash())
+			//w.commitNewWork(nil, true, time.Now().Unix())
+			//w.commit(nil, true, )
 			// Short circuit for duplicate side blocks
 			//if _, exist := w.localUncles[ev.Block.Hash()]; exist {
 			//	continue

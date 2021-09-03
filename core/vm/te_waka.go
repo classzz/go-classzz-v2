@@ -61,11 +61,11 @@ var (
 	}
 
 	ethPoolAddr  = "0x089F49D3d61aBB29967644b2a5B0cA162b337e52"
-	hecoPoolAddr = "0x486c75523eC8A6797d66eD7Bf41F5079DCfDE185"
+	hecoPoolAddr = "0x87e3D94cb46cad6521d4DF4136D0A24A244FCEDe"
 	bscPoolAddr  = ""
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
-	mintTopics = "0x8fb5c7bffbb272c541556c455c74269997b816df24f56dd255c2391d92d4f1e9"
+	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
 )
 
 // TeWaKaGas defines all method gas
