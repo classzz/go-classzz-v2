@@ -33,7 +33,6 @@ import (
 	"github.com/classzz/go-classzz-v2/common/hexutil"
 	"github.com/classzz/go-classzz-v2/common/math"
 	"github.com/classzz/go-classzz-v2/consensus/clique"
-	"github.com/classzz/go-classzz-v2/consensus/ethash"
 	"github.com/classzz/go-classzz-v2/consensus/misc"
 	"github.com/classzz/go-classzz-v2/core"
 	"github.com/classzz/go-classzz-v2/core/state"
@@ -1985,7 +1984,7 @@ func (api *PublicDebugAPI) SeedHash(ctx context.Context, number uint64) (string,
 	if block == nil {
 		return "", fmt.Errorf("block #%d not found", number)
 	}
-	return fmt.Sprintf("0x%x", ethash.SeedHash(number)), nil
+	return fmt.Sprintf("0x000"), nil
 }
 
 // PrivateDebugAPI is the collection of Classzz APIs exposed over the private
