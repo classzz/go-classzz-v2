@@ -385,9 +385,8 @@ func DefaultTestnetGenesisBlock() *Genesis {
 	key3 := hexutil.MustDecode("0x04bfd74dc8e5a30c1352827a1ac5f2aa528940ef24e3ff91b9ca9932ae0a63dad094ab8c833aeda5a306324cd0b6bfda298ca9b4ec568a8817724bcb8189ffd75c")
 
 	return &Genesis{
-		Config:    params.TestnetChainConfig,
-		Timestamp: 0x5D18A43F,
-		//ExtraData:  hexutil.MustDecode("0x00000000000000000000000000000000000000000000000000000000000000001041afbcb359d5a8dc58c15b2ff51354ff8a217d0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"),
+		Config:     params.TestnetChainConfig,
+		Timestamp:  0x61318edd,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(10240),
 		Alloc: map[common.Address]GenesisAccount{
