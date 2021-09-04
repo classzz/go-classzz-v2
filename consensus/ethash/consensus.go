@@ -39,6 +39,7 @@ var (
 	BlockReward                   = new(big.Int).Mul(big.NewInt(200), big.NewInt(1e+18)) // Block reward in wei for successfully mining a block
 	allowedFutureBlockTimeSeconds = big.NewInt(int64(30))                                // Max seconds from current time allowed for blocks, before they're considered future blocks
 
+	SubsidyReductionInterval = big.NewInt(1000000)
 	// calcDifficultyEip2384 is the difficulty adjustment algorithm as specified by EIP 2384.
 	// It offsets the bomb 4M blocks from Constantinople, so in total 9M blocks.
 	// Specification EIP-2384: https://eips.classzz.org/EIPS/eip-2384
@@ -388,9 +389,9 @@ func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header 
 		return
 	}
 	// Select the correct block reward based on chain progression
-	blockReward := BlockReward
-
-	// Accumulate the rewards for the miner and any included uncles
-	reward := new(big.Int).Set(blockReward)
+	// Equivalent to: baseSubsidy / 2^(height/subsidyHalvingInterval)
+	interval := header.Number.Uint64() / SubsidyReductionInterval.Uint64()
+	reward := new(big.Int).Rsh(BlockReward, uint(interval))
+	// Accumulate the rewards for the miner
 	state.AddBalance(header.Coinbase, reward)
 }
