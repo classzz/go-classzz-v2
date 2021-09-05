@@ -474,6 +474,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		Path        []common.Address
 		PubKey      []byte
 		RouterAddr  common.Address
+		Slippage    *big.Int
 		IsInsurance bool
 	}{}
 
@@ -508,6 +509,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		Amount:      args.Amount,
 		PubKey:      args.PubKey,
 		RouterAddr:  args.RouterAddr,
+		Slippage:    args.Slippage,
 		IsInsurance: args.IsInsurance,
 	}
 

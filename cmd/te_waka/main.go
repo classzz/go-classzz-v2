@@ -88,29 +88,27 @@ var (
 			Usage: "",
 			Value: 0,
 		},
-		cli.Uint64Flag{
+		cli.StringFlag{
 			Name:  "casting.amount",
 			Usage: "",
-			Value: 0,
 		},
-		cli.StringFlag{
-			Name:  "casting.totoken",
+		cli.StringSliceFlag{
+			Name:  "casting.path",
 			Usage: "",
-			Value: "",
 		},
 		cli.StringFlag{
 			Name:  "casting.pubkey",
 			Usage: "",
 			Value: "",
 		},
-		cli.Uint64Flag{
-			Name:  "casting.slippage",
-			Usage: "",
-		},
 		cli.StringFlag{
 			Name:  "casting.routeraddr",
 			Usage: "",
 			Value: "",
+		},
+		cli.Uint64Flag{
+			Name:  "casting.slippage",
+			Usage: "",
 		},
 		cli.BoolFlag{
 			Name:  "casting.isinsurance",
@@ -142,6 +140,7 @@ var (
 		CastingFlags[3],
 		CastingFlags[4],
 		CastingFlags[5],
+		CastingFlags[6],
 	}
 )
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"github.com/classzz/go-classzz-v2/cmd/utils"
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/core/vm"
@@ -120,17 +121,28 @@ var CastingCommand = cli.Command{
 func Casting(ctx *cli.Context) error {
 
 	loadPrivate(ctx)
-
 	conn, _ := dialConn(ctx)
-
 	ConvertType := ctx.GlobalUint64(CastingFlags[0].GetName())
-	Amount := ctx.GlobalUint64(CastingFlags[1].GetName())
-	Path := ctx.GlobalString(CastingFlags[2].GetName())
-	PubKey := ctx.GlobalString(CastingFlags[2].GetName())
-	RouterAddr := ctx.GlobalString(CastingFlags[2].GetName())
-	IsInsurance := ctx.GlobalString(CastingFlags[2].GetName())
 
-	input := packInput("casting", ConvertType, Amount, Path, PubKey, RouterAddr, IsInsurance)
+	Amount := ctx.GlobalString(CastingFlags[1].GetName())
+	ToAmount, _ := big.NewInt(0).SetString(Amount, 10)
+
+	Path := ctx.GlobalStringSlice(CastingFlags[2].GetName())
+	ToPath := []common.Address{}
+	for _, v := range Path {
+		ToPath = append(ToPath, common.HexToAddress(v))
+	}
+
+	PubKey := ctx.GlobalString(CastingFlags[3].GetName())
+	ToPubKey, _ := hex.DecodeString(PubKey)
+
+	RouterAddr := ctx.GlobalString(CastingFlags[4].GetName())
+	ToRouterAddr := common.HexToAddress(RouterAddr)
+
+	Slippage := ctx.GlobalUint64(CastingFlags[5].GetName())
+	IsInsurance := ctx.GlobalBool(CastingFlags[6].GetName())
+
+	input := packInput("casting", big.NewInt(int64(ConvertType)), ToAmount, ToPath, ToPubKey, ToRouterAddr, big.NewInt(int64(Slippage)), IsInsurance)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 
