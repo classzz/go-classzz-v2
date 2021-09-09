@@ -30,6 +30,8 @@ import (
 	"github.com/classzz/go-classzz-v2/core/types"
 )
 
+var epochLength = 5
+
 // Tests that ethash works correctly in test mode.
 func TestTestMode(t *testing.T) {
 	header := &types.Header{Number: big.NewInt(1), Difficulty: big.NewInt(100)}
