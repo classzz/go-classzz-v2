@@ -44,11 +44,12 @@ const (
 )
 
 var (
-	baseUnit  = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	Int10     = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
-	fbaseUnit = new(big.Float).SetFloat64(float64(baseUnit.Int64()))
-	mixImpawn = new(big.Int).Mul(big.NewInt(1000), baseUnit)
-	Base      = new(big.Int).SetUint64(10000)
+	baseUnit      = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
+	Int10         = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	MortgageToMin = new(big.Int).SetUint64(257)
+	MortgageToMax = new(big.Int).SetUint64(356)
+
+	mimState = new(big.Int).Mul(big.NewInt(1000000), baseUnit)
 
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
@@ -60,8 +61,8 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0x089F49D3d61aBB29967644b2a5B0cA162b337e52"
-	hecoPoolAddr = "0x87e3D94cb46cad6521d4DF4136D0A24A244FCEDe"
+	ethPoolAddr  = ""
+	hecoPoolAddr = ""
 	bscPoolAddr  = ""
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
@@ -162,7 +163,6 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 	from := contract.caller.Address()
 
 	t1 := time.Now()
-
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
 	if err != nil {
@@ -170,9 +170,35 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 		return nil, err
 	}
 
+	//
+	if args.StakingAmount.Cmp(mimState) < 0 {
+		return nil, fmt.Errorf("mortgage StakingAmount %s", "StakingAmount <  emimState")
+	}
+
+	//
+	if ValidPubkey(args.PubKey) != nil {
+		return nil, fmt.Errorf("mortgage PubKey %s", "PubKey err")
+	}
+
+	//
+	ToAddressNum := new(big.Int).SetBytes(args.ToAddress.Bytes())
+	if ToAddressNum.Cmp(MortgageToMin) < 0 && ToAddressNum.Cmp(MortgageToMax) > 1 {
+		return nil, fmt.Errorf("mortgage ToAddressNum %s", "MortgageToMax > ToAddressNum > MortgageToMin")
+	}
+
+	//
+	if tewaka.GetStakeUser(from) != nil {
+		return nil, fmt.Errorf("mortgage HasStakeUser %s", "from already exist")
+	}
+
+	//
+	if tewaka.GetStakeToAddress(args.ToAddress) != nil {
+		return nil, fmt.Errorf("mortgage HasStakeToAddress %s", "ToAddress already exist")
+	}
+
+	//
 	if len(args.CoinBaseAddress) > 16 {
-		log.Error("CoinBaseAddress > 16 ", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("mortgage CoinBaseAddress %s", "len(CoinBaseAddress) > 16")
 	}
 
 	t2 := time.Now()
@@ -219,6 +245,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
 	args := struct {
+		StakingAmount   *big.Int
 		CoinBaseAddress []common.Address
 	}{}
 
@@ -239,6 +266,25 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 		return nil, err
 	}
 
+	if args.StakingAmount.Cmp(big.NewInt(0)) > 0 {
+		//
+		if args.StakingAmount.Cmp(mimState) < 0 {
+			return nil, fmt.Errorf("update StakingAmount %s", "StakingAmount <  emimState")
+		}
+
+		if have, want := evm.StateDB.GetBalance(from), args.StakingAmount; have.Cmp(want) < 0 {
+			return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
+		}
+
+		if item := tewaka.GetStakeUser(from); item != nil {
+			evm.StateDB.SubBalance(from, args.StakingAmount)
+			evm.StateDB.AddBalance(item.ToAddress, args.StakingAmount)
+		} else {
+			return nil, fmt.Errorf("update GetStakeUser %s", "from is nil")
+		}
+	}
+
+	//
 	if len(args.CoinBaseAddress) > 16 {
 		log.Error("CoinBaseAddress > 16 ", "error", err)
 		return nil, err
@@ -876,6 +922,10 @@ const TeWakaABI = `
     {
         "name":"update",
         "inputs":[
+			{
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
             {
                 "type":"address[]",
                 "name":"coinBaseAddress"
@@ -890,6 +940,10 @@ const TeWakaABI = `
 
         ],
         "inputs":[
+			{
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
             {
                 "type":"address[]",
                 "name":"coinBaseAddress"

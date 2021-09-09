@@ -384,16 +384,10 @@ func DefaultGenesisBlock() *Genesis {
 				},
 			},
 			{
-				Coinbase:  common.HexToAddress(""),
+				Coinbase:  common.HexToAddress("0x12684D85b7885DE85EBc6398bBcEfa08274134A0"),
 				StakeBase: common.BytesToAddress([]byte{1, 2}),
-				Pubkey:    common.Hex2Bytes(""),
-				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
-				CoinBaseAddress: []common.Address{
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-				},
+				Pubkey:    common.Hex2Bytes("02c2552119fda685f2f6da437078225b3fef14bc61cc3ccf758702c23f4611c655"),
+				Amount:    new(big.Int).Mul(big.NewInt(2000000), big.NewInt(1e18)),
 			},
 			{
 				Coinbase:  common.HexToAddress("0xC11f364698f5eeB18Bc82b30Fc2b84847177fD23"),
@@ -468,16 +462,10 @@ func DefaultGenesisBlock() *Genesis {
 				},
 			},
 			{
-				Coinbase:  common.HexToAddress(""),
+				Coinbase:  common.HexToAddress("0x168A4beFc9deac7744F3C8d4C19C341c6F141553"),
 				StakeBase: common.BytesToAddress([]byte{1, 9}),
-				Pubkey:    common.Hex2Bytes(""),
+				Pubkey:    common.Hex2Bytes("02542050fb9b585795c88edc49e48000080457fd5ea077974b0b478b498d80d8c8"),
 				Amount:    new(big.Int).Mul(big.NewInt(2000000), big.NewInt(1e18)),
-				CoinBaseAddress: []common.Address{
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-					common.HexToAddress(""),
-				},
 			},
 			{
 				Coinbase:  common.HexToAddress("0xe50a511a60e40Fe14A77fcC44c586bA7b60C7d5E"),

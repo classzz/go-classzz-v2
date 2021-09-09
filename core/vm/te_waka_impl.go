@@ -99,9 +99,16 @@ func (twi *TeWakaImpl) EncodeRLP(w io.Writer) error {
 	})
 }
 
-func ValidPk(pk []byte) error {
-	_, err := crypto.UnmarshalPubkey(pk)
-	return err
+func ValidPubkey(pk []byte) error {
+	_, err := crypto.DecompressPubkey(pk)
+	if err != nil {
+		_, err := crypto.UnmarshalPubkey(pk)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return nil
 }
 
 func (twi *TeWakaImpl) Save(state StateDB, preAddress common.Address) error {
@@ -180,6 +187,24 @@ func (twi *TeWakaImpl) Confirm(item *types.ConvertItem) {
 			return
 		}
 	}
+}
+
+func (twi *TeWakaImpl) GetStakeUser(address common.Address) *types.Pledge {
+	for _, v := range twi.PledgeInfos {
+		if bytes.Equal(v.Address[:], address[:]) {
+			return v
+		}
+	}
+	return nil
+}
+
+func (twi *TeWakaImpl) GetStakeToAddress(address common.Address) *types.Pledge {
+	for _, v := range twi.PledgeInfos {
+		if bytes.Equal(v.ToAddress[:], address[:]) {
+			return v
+		}
+	}
+	return nil
 }
 
 func (twi *TeWakaImpl) GetStakingByUser(address common.Address) *big.Int {
