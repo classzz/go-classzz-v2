@@ -170,6 +170,11 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 		return nil, err
 	}
 
+	if len(args.CoinBaseAddress) > 16 {
+		log.Error("CoinBaseAddress > 16 ", "error", err)
+		return nil, err
+	}
+
 	t2 := time.Now()
 
 	tewaka.Mortgage(from, args.ToAddress, args.PubKey, args.StakingAmount, args.CoinBaseAddress)
@@ -234,8 +239,18 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 		return nil, err
 	}
 
+	if len(args.CoinBaseAddress) > 16 {
+		log.Error("CoinBaseAddress > 16 ", "error", err)
+		return nil, err
+	}
+
 	t2 := time.Now()
-	tewaka.Update(from, args.CoinBaseAddress)
+	temp := tewaka.Update(from, args.CoinBaseAddress)
+
+	if !temp {
+		log.Error("from err", "error", err)
+		return nil, err
+	}
 
 	t3 := time.Now()
 	err = tewaka.Save(evm.StateDB, TeWaKaAddress)

@@ -48,10 +48,11 @@ import (
 var errGenesisNoConfig = errors.New("genesis has no chain configuration")
 
 type StakeMember struct {
-	Coinbase  common.Address `json:"coinbase`
-	StakeBase common.Address `json:"stakebase`
-	Pubkey    []byte
-	Amount    *big.Int
+	Coinbase        common.Address `json:"coinbase`
+	StakeBase       common.Address `json:"stakebase`
+	Pubkey          []byte
+	Amount          *big.Int
+	CoinBaseAddress []common.Address
 }
 
 // Genesis specifies the header fields, state of a genesis block. It also defines hard
@@ -281,7 +282,7 @@ func (g *Genesis) ToBlock(db czzdb.Database) *types.Block {
 	consensus.OnceInitImpawnState(g.Config, statedb)
 	impl := vm.NewTeWakaImpl()
 	for _, member := range g.Committee {
-		impl.Mortgage(member.Coinbase, member.StakeBase, member.Pubkey, member.Amount, nil)
+		impl.Mortgage(member.Coinbase, member.StakeBase, member.Pubkey, member.Amount, member.CoinBaseAddress)
 		vm.GenesisLockedBalance(statedb, member.Coinbase, member.StakeBase, member.Amount)
 	}
 	err = impl.Save(statedb, vm.TeWaKaAddress)
@@ -364,18 +365,281 @@ func GenesisBlockForTesting(db czzdb.Database, addr common.Address, balance *big
 func DefaultGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
-		Nonce:      66,
+		Nonce:      0,
 		ExtraData:  hexutil.MustDecode("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"),
 		GasLimit:   5000,
-		Difficulty: big.NewInt(64),
-		Alloc: map[common.Address]GenesisAccount{
-			common.HexToAddress("0x3B70A39dc817EC50dD0A167ac7Dd4C5B80993652"): {Balance: big.NewInt(10000000000000000)}, // ECRecover
+		Difficulty: big.NewInt(1000000000),
+		Alloc:      decodePrealloc(mainnetAllocData),
+		Committee: []*StakeMember{
+			{
+				Coinbase:  common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+				StakeBase: common.BytesToAddress([]byte{1, 1}),
+				Pubkey:    common.Hex2Bytes("03fe89d1c232d3e1e39790803f3998ec9abb8af2175221347c12c151e5e7f932f0"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress(""),
+				StakeBase: common.BytesToAddress([]byte{1, 2}),
+				Pubkey:    common.Hex2Bytes(""),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xC11f364698f5eeB18Bc82b30Fc2b84847177fD23"),
+				StakeBase: common.BytesToAddress([]byte{1, 3}),
+				Pubkey:    common.Hex2Bytes("033e63e6ab0e433ed6227cc19b13fdbf9bf436268e8129cec96783c62e18c35415"),
+				Amount:    new(big.Int).Mul(big.NewInt(6000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x1568120C04367518B3e878085667625617383828"),
+				StakeBase: common.BytesToAddress([]byte{1, 4}),
+				Pubkey:    common.Hex2Bytes("03833f0837af9c04d00b67bfbf2fef55314d039c4d5ed1d189567b09dba28bcd0d"),
+				Amount:    new(big.Int).Mul(big.NewInt(7000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x1B46857eE2748e09a48F499001Cb16a9B0d7a61e"),
+				StakeBase: common.BytesToAddress([]byte{1, 5}),
+				Pubkey:    common.Hex2Bytes("036288fbb681212270ffb1f128f592a88f2ee90eae9103b8b847fa5e32bfbea2ee"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x7D1C8B109737D12E49523baafF92462aE29FF833"),
+				StakeBase: common.BytesToAddress([]byte{1, 6}),
+				Pubkey:    common.Hex2Bytes("03273b69ad364c4647f19f5cb37f9c8300cd698596e0e9df52fd51d94db52975ea"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x41dA56830548eE25601B488fdE310DB8A9436362"),
+				StakeBase: common.BytesToAddress([]byte{1, 7}),
+				Pubkey:    common.Hex2Bytes("03284e410b1a510b4bf55254d02d18a352941ebbd30fe8b6a6036399b5575c06d1"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xedD509361ED3C4b1e789fEAd2a1052E7F675C2e8"),
+				StakeBase: common.BytesToAddress([]byte{1, 8}),
+				Pubkey:    common.Hex2Bytes("03ce17baa5176825fd7febe50ec1e6cd3a26526c6ddd2e7eed9c93c50ef9e11e2c"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress(""),
+				StakeBase: common.BytesToAddress([]byte{1, 9}),
+				Pubkey:    common.Hex2Bytes(""),
+				Amount:    new(big.Int).Mul(big.NewInt(2000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+					common.HexToAddress(""),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xe50a511a60e40Fe14A77fcC44c586bA7b60C7d5E"),
+				StakeBase: common.BytesToAddress([]byte{1, 10}),
+				Pubkey:    common.Hex2Bytes("03cb35ea1bff93d40913062c9e2cdc9f1c444a702ef338571f47faed967d73fcc8"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xD96f04cb4a49d465294d47A56d59a6B164C6A5E0"),
+				StakeBase: common.BytesToAddress([]byte{1, 11}),
+				Pubkey:    common.Hex2Bytes("02394fbbe279189bba851c6aba15dbbc15d375f58e7044a9081c7c6e7980d2f611"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xb2286479525505Fcc5Ef3a1d1407EF96bc0Ac745"),
+				StakeBase: common.BytesToAddress([]byte{1, 12}),
+				Pubkey:    common.Hex2Bytes("02394fbbe279189bba851c6aba15dbbc15d375f58e7044a9081c7c6e7980d2f611"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xB03E6687a5D0a27C7661C03aB0F88836be1b468B"),
+				StakeBase: common.BytesToAddress([]byte{1, 13}),
+				Pubkey:    common.Hex2Bytes("02239ffaa617f9d5f3ad8945b50740caa986928f5acd495ac9c4890e8df624236a"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xf3237AC2BD73185b508CAA4B90c5febB6338170f"),
+				StakeBase: common.BytesToAddress([]byte{1, 14}),
+				Pubkey:    common.Hex2Bytes("03d4319f9db08461c17aa837fe320ec7910bce26f61d71f23777c44449cc13ee96"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x2545C05095709505DE20dc6074BDCf90F7Fd5A95"),
+				StakeBase: common.BytesToAddress([]byte{1, 15}),
+				Pubkey:    common.Hex2Bytes("0285329a00e38cc07e0aecae13d173f404680868bcc3408f81077bb4822bd7f81f"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x351659b14c6700aa5C0360E08c94Ba6395496aec"),
+				StakeBase: common.BytesToAddress([]byte{1, 16}),
+				Pubkey:    common.Hex2Bytes("0261cc730c8ffe3b9b21582f4581f172158d8351ec0186b20b22f1165350e286ec"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x09e0874c6399d3cC739D879206Ee5D4140212EE5"),
+				StakeBase: common.BytesToAddress([]byte{1, 17}),
+				Pubkey:    common.Hex2Bytes("038f0dccb50af3a53f871de937e7a2cad88bd0fa41c9ddfd426254e354ddcdbc5a"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x996667572e76849b0CA0A8912227E063F613E505"),
+				StakeBase: common.BytesToAddress([]byte{1, 18}),
+				Pubkey:    common.Hex2Bytes("021cacb67dcb5dcf9c26c89a9b2dfacebc406ca083a0b690838fbc6308f77fdf5a"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x4BD8Ab37688589eC75cd39eBb7d52ec93CC59CCa"),
+				StakeBase: common.BytesToAddress([]byte{1, 19}),
+				Pubkey:    common.Hex2Bytes("02807798f6f9ac77611a2efff6f629d51219429e923375be34781f463525d56df2"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x596Af95f4378AD3866e0FA1dF0C04C0290dc4F34"),
+				StakeBase: common.BytesToAddress([]byte{1, 20}),
+				Pubkey:    common.Hex2Bytes("03684cd38bf36922cd37489cb8e19864ef56de8e0175998fc09bebf0a640e89037"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0x1491F7883f4220Cb46DE3804F83A294e6af624F2"),
+				StakeBase: common.BytesToAddress([]byte{1, 21}),
+				Pubkey:    common.Hex2Bytes("0318e25c9d2b6301ab36391335b280d15e8ed310885e4f3bc9020db5a36e49081b"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
+			{
+				Coinbase:  common.HexToAddress("0xF59c92820a62c174419d66bc0Ec3cE528939dC9d"),
+				StakeBase: common.BytesToAddress([]byte{1, 22}),
+				Pubkey:    common.Hex2Bytes("02fe7bd7e666382dc9f8d243c3013ef29d5ddbd6ee453fe454b7aa82c1436416f9"),
+				Amount:    new(big.Int).Mul(big.NewInt(5000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x5CEED59b15E4566A01020989Ca848DdA69B92b9F"),
+					common.HexToAddress("0x2faeb19FABC6aB7C174B2E698A2f21dCe5Bd595A"),
+					common.HexToAddress("0x5884d78105EeB71F6b844b0393d816e0982672cc"),
+					common.HexToAddress("0xFd4B92f7Eb6352e87290B9Dbe3d0DAfca1BFADd6"),
+				},
+			},
 		},
 	}
 }
 
 func DefaultTestnetGenesisBlock() *Genesis {
-	i1 := new(big.Int).Mul(big.NewInt(990000000), big.NewInt(1e18))
 	i2 := new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
 	// addr1: 0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B
 	key1 := hexutil.MustDecode("0x04e76d4d749766a5682f2b88bd0c4633fd2afc1ae183cb21203b321210271de6c498197f32e873586c7a8c32fb5606279466002bb09e99bed225bbe231312ac8e2")
@@ -389,14 +653,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Timestamp:  0x61318edd,
 		GasLimit:   0x47b760,
 		Difficulty: big.NewInt(10240),
-		Alloc: map[common.Address]GenesisAccount{
-			common.BytesToAddress([]byte{1}):                                  {Balance: big.NewInt(1)}, // ECRecover
-			common.BytesToAddress([]byte{2}):                                  {Balance: big.NewInt(1)}, // SHA256
-			common.BytesToAddress([]byte{3}):                                  {Balance: big.NewInt(1)}, // RIPEMD
-			common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"): {Balance: new(big.Int).Set(i1)},
-			common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"): {Balance: new(big.Int).Set(i1)},
-			common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"): {Balance: new(big.Int).Set(i1)},
-		},
+		Alloc:      decodePrealloc(mainnetAllocData),
 		Committee: []*StakeMember{
 			{
 				Coinbase:  common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"),

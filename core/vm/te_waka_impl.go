@@ -159,13 +159,14 @@ func (twi *TeWakaImpl) Mortgage(address common.Address, to common.Address, pubKe
 	twi.PledgeInfos = append(twi.PledgeInfos, info)
 }
 
-func (twi *TeWakaImpl) Update(address common.Address, cba []common.Address) {
+func (twi *TeWakaImpl) Update(address common.Address, cba []common.Address) bool {
 	for _, v := range twi.PledgeInfos {
 		if bytes.Equal(v.Address[:], address[:]) {
 			v.CoinBaseAddress = cba
-			return
+			return true
 		}
 	}
+	return false
 }
 
 func (twi *TeWakaImpl) Convert(item *types.ConvertItem) {

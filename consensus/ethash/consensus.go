@@ -36,8 +36,8 @@ import (
 
 // Ethash proof-of-work protocol constants.
 var (
-	BlockReward                   = new(big.Int).Mul(big.NewInt(200), big.NewInt(1e+18)) // Block reward in wei for successfully mining a block
-	allowedFutureBlockTimeSeconds = big.NewInt(int64(30))                                // Max seconds from current time allowed for blocks, before they're considered future blocks
+	BlockReward                   = new(big.Int).Mul(big.NewInt(100), big.NewInt(1e+18)) // Block reward in wei for successfully mining a block
+	allowedFutureBlockTimeSeconds = big.NewInt(int64(15))                                // Max seconds from current time allowed for blocks, before they're considered future blocks
 
 	SubsidyReductionInterval = big.NewInt(1000000)
 	// calcDifficultyEip2384 is the difficulty adjustment algorithm as specified by EIP 2384.
@@ -254,22 +254,19 @@ func makeDifficultyCalculator() func(time uint64, parent *types.Header) *big.Int
 	return func(time uint64, parent *types.Header) *big.Int {
 		// https://github.com/classzz/EIPs/issues/100.
 		// algorithm:
-		// diff = (parent_diff +
-		//         (parent_diff / 2048 * max((2 if len(parent.uncles) else 1) - ((timestamp - parent.timestamp) // 9), -99))
-		//        ) + 2^(periodCount - 2)
-
 		bigTime := new(big.Int).SetUint64(time)
 		bigParentTime := new(big.Int).SetUint64(parent.Time)
 
 		// holds intermediate values to make the algo easier to read & audit
 		x := new(big.Int)
 		y := new(big.Int)
+
 		// 1 - ((timestamp - parent.timestamp) // 30
 		x.Sub(bigTime, bigParentTime)
 		x.Div(x, allowedFutureBlockTimeSeconds)
 		x.Sub(big1, x)
 
-		// max((2 if len(parent_uncles) else 1) - (block_timestamp - parent_timestamp) // 9, -99)
+		// max((1 - (block_timestamp - parent_timestamp) // 9, -99)
 		if x.Cmp(bigMinus99) < 0 {
 			x.Set(bigMinus99)
 		}
