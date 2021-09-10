@@ -365,10 +365,10 @@ func GenesisBlockForTesting(db czzdb.Database, addr common.Address, balance *big
 func DefaultGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
-		Nonce:      0,
-		ExtraData:  hexutil.MustDecode("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"),
+		Nonce:      66,
+		ExtraData:  hexutil.MustDecode("0x4275696c642061206272696467652c20796f7520636f6e6e65637420322069736c616e64733b206275696c6420612063616e6f6520796f7520636f6e6e65637420616c6c2069736c616e64732e2054652057616b6120697320746861742063616e6f652c207468617420636f6e6e6563747320616c6c20626c6f636b636861696e732e"),
 		GasLimit:   5000,
-		Difficulty: big.NewInt(100000000),
+		Difficulty: new(big.Int).SetUint64(1_000_000_000_000),
 		Alloc:      decodePrealloc(mainnetAllocData),
 		Committee: []*StakeMember{
 			{
