@@ -17,7 +17,7 @@ FROM alpine:latest
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /go-classzz-v2/build/bin/gczz /usr/local/bin/
 
-EXPOSE 8545 8546 30303 30303/udp
+EXPOSE 8545 8546 32668 32668/udp
 ENTRYPOINT ["gczz"]
 
 # Add some metadata labels to help programatic image consumption

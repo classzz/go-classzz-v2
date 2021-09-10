@@ -612,7 +612,7 @@ var (
 	ListenPortFlag = cli.IntFlag{
 		Name:  "port",
 		Usage: "Network listening port",
-		Value: 30303,
+		Value: 32668,
 	}
 	BootnodesFlag = cli.StringFlag{
 		Name:  "bootnodes",
