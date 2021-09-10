@@ -193,13 +193,14 @@ search:
 const remoteSealerTimeout = 1 * time.Second
 
 type remoteSealer struct {
-	works        map[common.Hash]*types.Block
-	rates        map[common.Hash]hashrate
-	currentBlock *types.Block
-	currentWork  [4]string
-	notifyCtx    context.Context
-	cancelNotify context.CancelFunc // cancels all notification requests
-	reqWG        sync.WaitGroup     // tracks notification request goroutines
+	works             map[common.Hash]*types.Block
+	rates             map[common.Hash]hashrate
+	currentBlock      *types.Block
+	currentWork       [4]string
+	currentWorkfactor map[common.Hash]*big.Int
+	notifyCtx         context.Context
+	cancelNotify      context.CancelFunc // cancels all notification requests
+	reqWG             sync.WaitGroup     // tracks notification request goroutines
 
 	ethash       *Ethash
 	noverify     bool
@@ -248,20 +249,21 @@ type sealWork struct {
 func startRemoteSealer(ethash *Ethash, urls []string, noverify bool) *remoteSealer {
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &remoteSealer{
-		ethash:       ethash,
-		noverify:     noverify,
-		notifyURLs:   urls,
-		notifyCtx:    ctx,
-		cancelNotify: cancel,
-		works:        make(map[common.Hash]*types.Block),
-		rates:        make(map[common.Hash]hashrate),
-		workCh:       make(chan *sealTask),
-		fetchWorkCh:  make(chan *sealWork),
-		submitWorkCh: make(chan *mineResult),
-		fetchRateCh:  make(chan chan uint64),
-		submitRateCh: make(chan *hashrate),
-		requestExit:  make(chan struct{}),
-		exitCh:       make(chan struct{}),
+		ethash:            ethash,
+		noverify:          noverify,
+		notifyURLs:        urls,
+		notifyCtx:         ctx,
+		cancelNotify:      cancel,
+		works:             make(map[common.Hash]*types.Block),
+		currentWorkfactor: make(map[common.Hash]*big.Int),
+		rates:             make(map[common.Hash]hashrate),
+		workCh:            make(chan *sealTask),
+		fetchWorkCh:       make(chan *sealWork),
+		submitWorkCh:      make(chan *mineResult),
+		fetchRateCh:       make(chan chan uint64),
+		submitRateCh:      make(chan *hashrate),
+		requestExit:       make(chan struct{}),
+		exitCh:            make(chan struct{}),
 	}
 	go s.loop()
 	return s
@@ -329,6 +331,7 @@ func (s *remoteSealer) loop() {
 				for hash, block := range s.works {
 					if block.NumberU64()+staleThreshold <= s.currentBlock.NumberU64() {
 						delete(s.works, hash)
+						delete(s.currentWorkfactor, hash)
 					}
 				}
 			}
@@ -360,6 +363,7 @@ func (s *remoteSealer) makeWork(block *types.Block, factor *big.Int) {
 	// Trace the seal work fetched by remote sealer.
 	s.currentBlock = block
 	s.works[hash] = block
+	s.currentWorkfactor[hash] = factor
 }
 
 // notifyWork notifies all the specified mining endpoints of the availability of
@@ -424,12 +428,13 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, sealhash common.Hash) 
 	//header.MixDigest = mixDigest
 
 	start := time.Now()
-	//if !s.noverify {
-	//	if err := s.ethash.verifySeal(nil, header); err != nil {
-	//		s.ethash.config.Log.Warn("Invalid proof-of-work submitted", "sealhash", sealhash, "elapsed", common.PrettyDuration(time.Since(start)), "err", err)
-	//		return false
-	//	}
-	//}
+	factor := s.currentWorkfactor[sealhash]
+	if !s.noverify {
+		if err := s.ethash.verifySeal(nil, header, factor); err != nil {
+			s.ethash.config.Log.Warn("Invalid proof-of-work submitted", "sealhash", sealhash, "elapsed", common.PrettyDuration(time.Since(start)), "err", err)
+			return false
+		}
+	}
 	// Make sure the result channel is assigned.
 	if s.results == nil {
 		s.ethash.config.Log.Warn("Ethash result channel is empty, submitted mining result is rejected")
