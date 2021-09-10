@@ -261,17 +261,17 @@ func makeDifficultyCalculator() func(time uint64, parent *types.Header) *big.Int
 		x := new(big.Int)
 		y := new(big.Int)
 
-		// 1 - ((timestamp - parent.timestamp) // 30
+		// 1 - ((timestamp - parent.timestamp) // 15
 		x.Sub(bigTime, bigParentTime)
 		x.Div(x, allowedFutureBlockTimeSeconds)
 		x.Sub(big1, x)
 
-		// max((1 - (block_timestamp - parent_timestamp) // 9, -99)
+		// max((1 - (block_timestamp - parent_timestamp) // 15, -99)
 		if x.Cmp(bigMinus99) < 0 {
 			x.Set(bigMinus99)
 		}
 
-		// parent_diff + (parent_diff * max( 1 - ((timestamp - parent.timestamp) // 30), -99) // 1024 )
+		// parent_diff + (parent_diff * max( 1 - ((timestamp - parent.timestamp) // 15), -99) // 1024 )
 		y.Mul(parent.Difficulty, x)
 		x.Div(y, params.DifficultyBoundDivisor)
 		newDifficulty := new(big.Int).Add(parent.Difficulty, x)
