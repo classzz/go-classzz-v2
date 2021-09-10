@@ -345,7 +345,6 @@ func (b *Block) WithSeal(header *Header) *Block {
 	return &Block{
 		header:       &cpy,
 		transactions: b.transactions,
-		//uncles:       b.uncles,
 	}
 }
 

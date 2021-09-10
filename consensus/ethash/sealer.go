@@ -87,7 +87,7 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	}
 	// Push new work to remote sealer
 	if ethash.remote != nil {
-		ethash.remote.workCh <- &sealTask{block: block, results: results}
+		ethash.remote.workCh <- &sealTask{block: block, factor: factor, results: results}
 	}
 	var (
 		pend   sync.WaitGroup
@@ -217,6 +217,7 @@ type remoteSealer struct {
 // sealTask wraps a seal block with relative result channel for remote sealer thread.
 type sealTask struct {
 	block   *types.Block
+	factor  *big.Int
 	results chan<- *types.Block
 }
 
@@ -283,7 +284,7 @@ func (s *remoteSealer) loop() {
 			// Update current work with new received block.
 			// Note same work can be past twice, happens when changing CPU threads.
 			s.results = work.results
-			s.makeWork(work.block)
+			s.makeWork(work.block, work.factor)
 			s.notifyWork()
 
 		case work := <-s.fetchWorkCh:
@@ -345,10 +346,15 @@ func (s *remoteSealer) loop() {
 //   result[1], 32 bytes hex encoded seed hash used for DAG
 //   result[2], 32 bytes hex encoded boundary condition ("target"), 2^256/difficulty
 //   result[3], hex encoded block number
-func (s *remoteSealer) makeWork(block *types.Block) {
+func (s *remoteSealer) makeWork(block *types.Block, factor *big.Int) {
+	difficulty := block.Difficulty()
+	if factor != nil && factor.Sign() > 0 {
+		difficulty = new(big.Int).Div(block.Difficulty(), factor)
+	}
+
 	hash := s.ethash.SealHash(block.Header())
 	s.currentWork[0] = hash.Hex()
-	s.currentWork[2] = common.BytesToHash(new(big.Int).Div(two256, block.Difficulty()).Bytes()).Hex()
+	s.currentWork[2] = common.BytesToHash(new(big.Int).Div(two256, difficulty).Bytes()).Hex()
 	s.currentWork[3] = hexutil.EncodeBig(block.Number())
 
 	// Trace the seal work fetched by remote sealer.
