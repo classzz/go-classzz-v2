@@ -136,8 +136,7 @@ func MakeFactorForMine(amount *big.Int) *big.Int {
 		return nil
 	}
 	result := new(big.Int).Div(amount, oneMillion)
-	result1 := big.NewInt(0).Exp(result, big.NewInt(3), nil)
-	factor := big.NewInt(0).Mul(amount, result1)
+	factor := big.NewInt(0).Exp(result, big.NewInt(3), nil)
 	return factor
 }
 

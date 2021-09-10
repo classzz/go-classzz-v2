@@ -2536,8 +2536,14 @@ func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int,
 	i := vm.NewTeWakaImpl()
 	state, err := bc.State()
 	if err != nil {
-		i.Load(state, vm.TeWaKaAddress)
-		return i.GetStakingByUser(address), nil
+		return nil, err
 	}
-	return nil, nil
+
+	err = i.Load(state, vm.TeWaKaAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("address", address.String())
+	return i.GetStakingByUser(address), nil
 }

@@ -134,17 +134,20 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 func (ethash *Ethash) mine(block *types.Block, factor *big.Int, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
 	// Extract some data from the header
 	var (
-		header = block.Header()
-		hash   = ethash.SealHash(header).Bytes()
-		target = new(big.Int).Div(two256, header.Difficulty)
+		header     = block.Header()
+		difficulty = header.Difficulty
+		hash       = ethash.SealHash(header).Bytes()
 	)
+
 	if factor != nil && factor.Sign() > 0 {
-		target = new(big.Int).Div(target, factor)
+		difficulty = new(big.Int).Div(header.Difficulty, factor)
 	}
+
 	// Start generating random nonces until we abort or find a good one
 	var (
 		attempts = int64(0)
 		nonce    = seed
+		target   = new(big.Int).Div(two256, difficulty)
 	)
 	logger := ethash.config.Log.New("miner", id)
 	logger.Trace("Started ethash search for new nonces", "seed", seed)
