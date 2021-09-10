@@ -314,10 +314,11 @@ func (ethash *Ethash) verifySeal(chain consensus.ChainHeaderReader, header *type
 	// If fast-but-heavy PoW verification was requested, use an ethash dataset
 	result = HashCZZ(ethash.SealHash(header).Bytes(), header.Nonce.Uint64())
 
-	target := new(big.Int).Div(two256, header.Difficulty)
+	difficulty := header.Difficulty
 	if factor != nil && factor.Sign() > 0 {
-		target = new(big.Int).Div(target, factor)
+		difficulty = new(big.Int).Div(difficulty, factor)
 	}
+	target := new(big.Int).Div(two256, difficulty)
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
 		return errInvalidPoW
 	}

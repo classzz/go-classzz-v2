@@ -425,7 +425,6 @@ func (s *remoteSealer) submitWork(nonce types.BlockNonce, sealhash common.Hash) 
 	// Verify the correctness of submitted result.
 	header := block.Header()
 	header.Nonce = nonce
-	//header.MixDigest = mixDigest
 
 	start := time.Now()
 	factor := s.currentWorkfactor[sealhash]
