@@ -2544,6 +2544,5 @@ func (bc *BlockChain) GetCurrentStakingByUser(address common.Address) (*big.Int,
 		return nil, err
 	}
 
-	fmt.Println("address", address.String())
 	return i.GetStakingByUser(address), nil
 }
