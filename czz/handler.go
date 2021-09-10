@@ -204,7 +204,7 @@ func newHandler(config *handlerConfig) (*handler, error) {
 		// case when starting new networks, where the genesis might be ancient (0 unix)
 		// which would prevent full nodes from accepting it.
 		if h.chain.CurrentBlock().NumberU64() < h.checkpointNumber {
-			log.Debug("Unsynced yet, discarded propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash())
+			log.Warn("Unsynced yet, discarded propagated block", "number", blocks[0].Number(), "hash", blocks[0].Hash())
 			return 0, nil
 		}
 		// If fast sync is running, deny importing weird blocks. This is a problematic
