@@ -61,7 +61,7 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = ""
+	ethPoolAddr  = "0x089f49d3d61abb29967644b2a5b0ca162b337e52"
 	hecoPoolAddr = ""
 	bscPoolAddr  = ""
 
@@ -377,11 +377,6 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
-		//case ExpandedTxConvert_OCzz:
-		//	client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		//	if item, err = verifyConvertEthereumTypeTx("OKEX", evm, client, AssetType, TxHash); err != nil {
-		//		return nil, err
-		//	}
 	}
 
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))

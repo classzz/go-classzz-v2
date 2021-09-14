@@ -140,8 +140,8 @@ func Casting(ctx *cli.Context) error {
 	conn, _ := dialConn(ctx)
 	ConvertType := ctx.GlobalUint64(CastingFlags[0].GetName())
 
-	Amount := ctx.GlobalString(CastingFlags[1].GetName())
-	ToAmount, _ := big.NewInt(0).SetString(Amount, 10)
+	Amount := ctx.GlobalInt64(CastingFlags[1].GetName())
+	ToAmount := czzToWei(Amount)
 
 	Path := ctx.GlobalStringSlice(CastingFlags[2].GetName())
 	ToPath := []common.Address{}
