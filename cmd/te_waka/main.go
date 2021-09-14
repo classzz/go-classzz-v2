@@ -11,9 +11,6 @@ import (
 )
 
 var (
-	// Git SHA1 commit hash of the release (set via linker flags)
-	gitCommit = ""
-	gitDate   = ""
 	// The app that holds all commands and flags.
 	app *cli.App
 
@@ -35,6 +32,11 @@ var (
 
 	MortgageFlags = []cli.Flag{
 		cli.StringFlag{
+			Name:  "mortgage.pubkey",
+			Usage: "",
+			Value: "",
+		},
+		cli.StringFlag{
 			Name:  "mortgage.toaddress",
 			Usage: "",
 			Value: "",
@@ -44,10 +46,9 @@ var (
 			Usage: "",
 			Value: "",
 		},
-		cli.StringFlag{
-			Name:  "mortgage.coinbaseaddress",
+		cli.StringSliceFlag{
+			Name:  "mortgage.coinbase",
 			Usage: "",
-			Value: "",
 		},
 	}
 
@@ -126,6 +127,7 @@ var (
 		MortgageFlags[0],
 		MortgageFlags[1],
 		MortgageFlags[2],
+		MortgageFlags[3],
 
 		ConvertFlags[0],
 		ConvertFlags[1],

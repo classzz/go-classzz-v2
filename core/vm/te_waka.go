@@ -221,7 +221,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["mortgage"]
-	logData, err := event.Inputs.Pack(args.ToAddress, args.StakingAmount, args.CoinBaseAddress)
+	logData, err := event.Inputs.Pack(args.PubKey, args.ToAddress, args.StakingAmount, args.CoinBaseAddress)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
@@ -879,12 +879,15 @@ const TeWakaABI = `
         "name":"mortgage",
         "inputs":[
             {
+                "type":"bytes",
+                "name":"pubKey"
+            },
+  			{
                 "type":"address",
                 "name":"toAddress"
             },
             {
                 "type":"uint256",
-                "unit":"wei",
                 "name":"stakingAmount"
             },
             {
@@ -901,13 +904,16 @@ const TeWakaABI = `
 
         ],
         "inputs":[
+ 			{
+                "type":"bytes",
+                "name":"pubKey"
+            },
             {
                 "type":"address",
                 "name":"toAddress"
             },
             {
                 "type":"uint256",
-                "unit":"wei",
                 "name":"stakingAmount"
             },
             {

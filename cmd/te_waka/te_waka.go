@@ -44,7 +44,7 @@ var (
 const (
 	datadirPrivateKey      = "key"
 	datadirDefaultKeyStore = "keystore"
-	TeWakaAmount           = 100
+	TeWakaAmount           = 1000000
 )
 
 func sendContractTransaction(client *czzclient.Client, from, toAddress common.Address, value *big.Int, privateKey *ecdsa.PrivateKey, input []byte) common.Hash {
@@ -132,9 +132,9 @@ func printError(error ...interface{}) {
 	log.Fatal(error)
 }
 
-func czzToWei(amount uint64) *big.Int {
+func czzToWei(amount int64) *big.Int {
 	baseUnit := new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
-	value := new(big.Int).Mul(big.NewInt(200), baseUnit)
+	value := new(big.Int).Mul(big.NewInt(amount), baseUnit)
 	fmt.Println(value.String())
 	return value
 }
@@ -200,7 +200,6 @@ func queryTx(conn *czzclient.Client, txHash common.Hash, contract bool, pending 
 }
 
 func packInput(abiMethod string, params ...interface{}) []byte {
-	fmt.Println(abcasd)
 	input, err := abiStaking.Pack(abiMethod, params...)
 	if err != nil {
 		printError(abiMethod, " error ", err)

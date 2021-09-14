@@ -628,40 +628,12 @@ func DefaultGenesisBlock() *Genesis {
 }
 
 func DefaultTestnetGenesisBlock() *Genesis {
-	i2 := new(big.Int).Mul(big.NewInt(100000), big.NewInt(1e18))
-	// addr1: 0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B
-	key1 := hexutil.MustDecode("0x04e76d4d749766a5682f2b88bd0c4633fd2afc1ae183cb21203b321210271de6c498197f32e873586c7a8c32fb5606279466002bb09e99bed225bbe231312ac8e2")
-	// addr2: 0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31
-	key2 := hexutil.MustDecode("0x0470aaf7409e2ff3ef0b3c776f103eb1761ac2949ad8750de10ce9f1b4b497666552542601f0e160b98d2f9057eb3b3e4755c0ed2872b0ad6e6f36b3685953eb1f")
-	// addr3: 0xC85eF13F14f807954cA22bdA4919e06c838A079e
-	key3 := hexutil.MustDecode("0x04bfd74dc8e5a30c1352827a1ac5f2aa528940ef24e3ff91b9ca9932ae0a63dad094ab8c833aeda5a306324cd0b6bfda298ca9b4ec568a8817724bcb8189ffd75c")
-
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
 		Timestamp:  0x61318edd,
 		GasLimit:   0x47b760,
-		Difficulty: big.NewInt(10240),
-		Alloc:      decodePrealloc(mainnetAllocData),
-		Committee: []*StakeMember{
-			{
-				Coinbase:  common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"),
-				StakeBase: common.HexToAddress("0xF59039fdA7dBC14F050BFeF36C75F5fD3D3eb23B"),
-				Pubkey:    key1,
-				Amount:    new(big.Int).Set(i2),
-			},
-			{
-				Coinbase:  common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"),
-				StakeBase: common.HexToAddress("0xCBbf6dA3b3809A3AD0140d9FBd3b91Eb7EafFC31"),
-				Pubkey:    key2,
-				Amount:    new(big.Int).Set(i2),
-			},
-			{
-				Coinbase:  common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"),
-				StakeBase: common.HexToAddress("0xC85eF13F14f807954cA22bdA4919e06c838A079e"),
-				Pubkey:    key3,
-				Amount:    new(big.Int).Set(i2),
-			},
-		},
+		Difficulty: big.NewInt(1024),
+		Alloc:      decodePrealloc(testnetAllocData),
 	}
 }
 

@@ -22,20 +22,27 @@ func Mortgage(ctx *cli.Context) error {
 
 	conn, url := dialConn(ctx)
 
-	toAddress := ctx.GlobalString(MortgageFlags[0].GetName())
-	coinBaseAddress := ctx.GlobalString(MortgageFlags[2].GetName())
-	cbas := []common.Address{common.HexToAddress(coinBaseAddress)}
+	pubKey := ctx.GlobalString(MortgageFlags[0].GetName())
+	pubKeyb, _ := hex.DecodeString(pubKey)
 
-	printBaseInfo(conn, url)
-	PrintBalance(conn, from, common.HexToAddress(toAddress))
+	toAddress := ctx.GlobalString(MortgageFlags[1].GetName())
 
-	stakingAmount := ctx.GlobalUint64(MortgageFlags[1].GetName())
+	stakingAmount := ctx.GlobalInt64(MortgageFlags[2].GetName())
 	Amount := czzToWei(stakingAmount)
 	if stakingAmount < TeWakaAmount {
 		printError("mortgage value must bigger than ", TeWakaAmount)
 	}
 
-	input := packInput("mortgage", common.HexToAddress(toAddress), Amount, cbas)
+	coinBaseAddress := ctx.GlobalStringSlice(MortgageFlags[3].GetName())
+	cbas := []common.Address{}
+	for _, v := range coinBaseAddress {
+		cbas = append(cbas, common.HexToAddress(v))
+	}
+
+	printBaseInfo(conn, url)
+	PrintBalance(conn, from, common.HexToAddress(toAddress))
+
+	input := packInput("mortgage", pubKeyb, common.HexToAddress(toAddress), Amount, cbas)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 
