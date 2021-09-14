@@ -62,10 +62,19 @@ func Update(ctx *cli.Context) error {
 
 	conn, _ := dialConn(ctx)
 
-	coinBaseAddress := ctx.GlobalString(MortgageFlags[2].GetName())
-	cbas := []common.Address{common.HexToAddress(coinBaseAddress)}
+	stakingAmount := ctx.GlobalInt64(MortgageFlags[2].GetName())
+	Amount := czzToWei(stakingAmount)
+	if stakingAmount != 0 && stakingAmount < TeWakaAmount {
+		printError("mortgage value must bigger than ", TeWakaAmount)
+	}
 
-	input := packInput("update", cbas)
+	coinBaseAddress := ctx.GlobalStringSlice(MortgageFlags[3].GetName())
+	cbas := []common.Address{}
+	for _, v := range coinBaseAddress {
+		cbas = append(cbas, common.HexToAddress(v))
+	}
+
+	input := packInput("update", Amount, cbas)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 

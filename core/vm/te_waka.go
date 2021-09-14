@@ -266,6 +266,11 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 		return nil, err
 	}
 
+	var item *types.Pledge
+	if item = tewaka.GetStakeUser(from); item == nil {
+		return nil, fmt.Errorf("update GetStakeUser %s", "from is nil")
+	}
+
 	if args.StakingAmount.Cmp(big.NewInt(0)) > 0 {
 		//
 		if args.StakingAmount.Cmp(mimState) < 0 {
@@ -276,12 +281,8 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 			return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
 		}
 
-		if item := tewaka.GetStakeUser(from); item != nil {
-			evm.StateDB.SubBalance(from, args.StakingAmount)
-			evm.StateDB.AddBalance(item.ToAddress, args.StakingAmount)
-		} else {
-			return nil, fmt.Errorf("update GetStakeUser %s", "from is nil")
-		}
+		evm.StateDB.SubBalance(from, args.StakingAmount)
+		evm.StateDB.AddBalance(item.ToAddress, args.StakingAmount)
 	}
 
 	//
@@ -307,7 +308,7 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 
 	t4 := time.Now()
 	event := AbiTeWaKa.Events["update"]
-	logData, err := event.Inputs.Pack(args.CoinBaseAddress)
+	logData, err := event.Inputs.Pack(args.StakingAmount, args.CoinBaseAddress)
 	if err != nil {
 		log.Error("Pack staking log error", "error", err)
 		return nil, err
