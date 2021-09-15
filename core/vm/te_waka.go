@@ -61,7 +61,7 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0x089f49d3d61abb29967644b2a5b0ca162b337e52"
+	ethPoolAddr  = "0x089f49d3d61abb29967644b2a5b0ca162b337e52|"
 	hecoPoolAddr = ""
 	bscPoolAddr  = ""
 
@@ -545,12 +545,6 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	from := contract.caller.Address()
 	t1 := time.Now()
 
-	if have, want := evm.StateDB.GetBalance(from), args.Amount; have.Cmp(want) < 0 {
-		return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
-	}
-
-	evm.StateDB.SubBalance(from, args.Amount)
-
 	tewaka := NewTeWakaImpl()
 	err = tewaka.Load(evm.StateDB, TeWaKaAddress)
 	if err != nil {
@@ -575,6 +569,14 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 
 	t2 := time.Now()
+
+	if have, want := evm.StateDB.GetBalance(from), args.Amount; have.Cmp(want) < 0 {
+		return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
+	}
+
+	evm.StateDB.SubBalance(from, args.Amount)
+	evm.StateDB.AddBalance(CoinPools[uint8(args.ConvertType.Uint64())], new(big.Int).Sub(args.Amount, item.FeeAmount))
+
 	tewaka.Convert(item)
 
 	t3 := time.Now()
@@ -675,24 +677,18 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	if AssetType == ExpandedTxConvert_ECzz {
-		if !strings.Contains(ethPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ETh [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	} else if AssetType == ExpandedTxConvert_HCzz {
-		if !strings.Contains(hecoPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Heco [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	} else if AssetType == ExpandedTxConvert_BCzz {
-		if !strings.Contains(bscPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	}
-
-	//else if AssetType == ExpandedTxConvert_OCzz {
-	//	if !strings.Contains(bscPoolAddr, extTx.To().String()) {
-	//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
-	//	}
-	//}
 
 	Vb, R, S := extTx.RawSignatureValues()
 	var V byte
