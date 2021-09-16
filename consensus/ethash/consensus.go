@@ -317,6 +317,9 @@ func (ethash *Ethash) verifySeal(chain consensus.ChainHeaderReader, header *type
 	difficulty := header.Difficulty
 	if factor != nil && factor.Sign() > 0 {
 		difficulty = new(big.Int).Div(difficulty, factor)
+		if difficulty.Cmp(big.NewInt(0)) == 0 {
+			difficulty = params.MinimumDifficulty
+		}
 	}
 	target := new(big.Int).Div(two256, difficulty)
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {

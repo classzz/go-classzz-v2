@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/classzz/go-classzz-v2/params"
 	"math"
 	"math/big"
 	"math/rand"
@@ -141,6 +142,9 @@ func (ethash *Ethash) mine(block *types.Block, factor *big.Int, id int, seed uin
 
 	if factor != nil && factor.Sign() > 0 {
 		difficulty = new(big.Int).Div(header.Difficulty, factor)
+		if difficulty.Cmp(big.NewInt(0)) == 0 {
+			difficulty = params.MinimumDifficulty
+		}
 	}
 
 	// Start generating random nonces until we abort or find a good one
@@ -353,6 +357,9 @@ func (s *remoteSealer) makeWork(block *types.Block, factor *big.Int) {
 	difficulty := block.Difficulty()
 	if factor != nil && factor.Sign() > 0 {
 		difficulty = new(big.Int).Div(block.Difficulty(), factor)
+		if difficulty.Cmp(big.NewInt(0)) == 0 {
+			difficulty = params.MinimumDifficulty
+		}
 	}
 
 	hash := s.ethash.SealHash(block.Header())
