@@ -774,7 +774,6 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "MintToken", txLog.Data); err != nil {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
 	}
-	logs.To = common.BytesToAddress(txLog.Topics[1][:])
 
 	var item *types.ConvertItem
 	for _, v := range tewaka.ConvertItems {
@@ -806,6 +805,9 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	}
 
 	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
+	if item.AssetType == ExpandedTxConvert_Czz {
+		amount2 = new(big.Int).Div(amount2, Int10)
+	}
 	if logs.AmountIn.Cmp(amount2) != 0 {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
 	}
@@ -822,23 +824,18 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 
 	// toaddress
 	if ConvertType == ExpandedTxConvert_ECzz {
-		if !strings.Contains(ethPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ETh [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	} else if ConvertType == ExpandedTxConvert_HCzz {
-		if !strings.Contains(hecoPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Heco [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
 		}
 	} else if ConvertType == ExpandedTxConvert_BCzz {
-		if !strings.Contains(bscPoolAddr, extTx.To().String()) {
+		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
 			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
 		}
 	}
-	//else if ConvertType == ExpandedTxConvert_OCzz {
-	//	if !strings.Contains(okexPoolAddr, extTx.To().String()) {
-	//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Okex [ToAddress: %s] != [%s]", netName, extTx.To().String(), okexPoolAddr)
-	//	}
-	//}
 
 	return item, nil
 }

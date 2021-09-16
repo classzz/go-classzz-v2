@@ -67,11 +67,6 @@ var (
 
 	ConfirmFlags = []cli.Flag{
 		cli.Uint64Flag{
-			Name:  "confirm.assettype",
-			Usage: "",
-			Value: 0,
-		},
-		cli.Uint64Flag{
 			Name:  "confirm.converttype",
 			Usage: "",
 			Value: 0,
@@ -134,7 +129,6 @@ var (
 
 		ConfirmFlags[0],
 		ConfirmFlags[1],
-		ConfirmFlags[2],
 
 		CastingFlags[0],
 		CastingFlags[1],

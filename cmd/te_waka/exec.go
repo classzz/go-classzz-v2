@@ -116,11 +116,10 @@ func Confirm(ctx *cli.Context) error {
 
 	conn, _ := dialConn(ctx)
 
-	AssetType := ctx.GlobalUint64(ConfirmFlags[0].GetName())
-	ConvertType := ctx.GlobalUint64(ConfirmFlags[1].GetName())
-	TxHash := ctx.GlobalString(ConfirmFlags[2].GetName())
+	ConvertType := ctx.GlobalInt64(ConfirmFlags[0].GetName())
+	TxHash := ctx.GlobalString(ConfirmFlags[1].GetName())
 
-	input := packInput("confirm", AssetType, ConvertType, TxHash)
+	input := packInput("confirm", big.NewInt(ConvertType), TxHash)
 	txHash := sendContractTransaction(conn, from, vm.TeWaKaAddress, nil, priKey, input)
 	getResult(conn, txHash, true, false)
 
