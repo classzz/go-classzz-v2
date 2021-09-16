@@ -50,6 +50,7 @@ var (
 	MortgageToMax = new(big.Int).SetUint64(356)
 
 	mimState = new(big.Int).Mul(big.NewInt(1000000), baseUnit)
+	Address0 = common.BytesToAddress([]byte{0})
 
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
@@ -379,23 +380,27 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		}
 	}
 
+	Amount := new(big.Int).Mul(item.Amount, Int10)
+	FeeAmount := big.NewInt(0).Div(Amount, big.NewInt(1000))
 	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
 	IDHash := item.Hash()
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 	t2 := time.Now()
 
-	if item.ConvertType != ExpandedTxConvert_Czz {
-		evm.StateDB.SubBalance(CoinPools[item.AssetType], item.Amount)
-		evm.StateDB.AddBalance(CoinPools[item.ConvertType], new(big.Int).Sub(item.Amount, item.FeeAmount))
-		tewaka.Convert(item)
-	} else {
-		evm.StateDB.SubBalance(CoinPools[item.AssetType], item.Amount)
+	if item.ConvertType == ExpandedTxConvert_Czz {
+		evm.StateDB.SubBalance(CoinPools[item.AssetType], Amount)
 		toaddresspuk, err := crypto.UnmarshalPubkey(item.PubKey)
 		if err != nil || toaddresspuk == nil {
 			return nil, err
 		}
 		toaddress := crypto.PubkeyToAddress(*toaddresspuk)
-		evm.StateDB.AddBalance(toaddress, new(big.Int).Sub(item.Amount, item.FeeAmount))
+		evm.StateDB.AddBalance(toaddress, new(big.Int).Sub(Amount, FeeAmount))
+		evm.StateDB.AddBalance(Address0, FeeAmount)
+	} else {
+		evm.StateDB.SubBalance(CoinPools[item.AssetType], Amount)
+		evm.StateDB.AddBalance(CoinPools[item.ConvertType], new(big.Int).Sub(Amount, FeeAmount))
+		evm.StateDB.AddBalance(Address0, FeeAmount)
+		tewaka.Convert(item)
 	}
 
 	tewaka.SetItem(&types.UsedItem{AssetType, TxHash})
@@ -479,11 +484,6 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
-		//case ExpandedTxConvert_OCzz:
-		//	client := evm.chainConfig.OkexClient[rand.Intn(len(evm.chainConfig.OkexClient))]
-		//	if item, err = verifyConfirmEthereumTypeTx("OKEX", client, tewaka, ConvertType, TxHash); err != nil {
-		//		return nil, err
-		//	}
 	}
 
 	t2 := time.Now()
@@ -576,6 +576,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	evm.StateDB.SubBalance(from, args.Amount)
 	evm.StateDB.AddBalance(CoinPools[uint8(args.ConvertType.Uint64())], new(big.Int).Sub(args.Amount, item.FeeAmount))
+	evm.StateDB.AddBalance(Address0, item.FeeAmount)
 
 	tewaka.Convert(item)
 

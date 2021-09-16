@@ -632,8 +632,19 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		Config:     params.TestnetChainConfig,
 		Timestamp:  0x61318edd,
 		GasLimit:   0x47b760,
-		Difficulty: big.NewInt(1024),
+		Difficulty: big.NewInt(10240),
 		Alloc:      decodePrealloc(testnetAllocData),
+		Committee: []*StakeMember{
+			{
+				Coinbase:  common.HexToAddress("0x3B70A39dc817EC50dD0A167ac7Dd4C5B80993652"),
+				StakeBase: common.BytesToAddress([]byte{1, 1}),
+				Pubkey:    common.Hex2Bytes("041dd517ea0deac64042fd2143f35b8f2ade7c474750b6beced66a3acd641548043a8c951c589b3aaacad304e8733e26ba6ee3dd4dfa697a76694eb2e6a47a8d1c"),
+				Amount:    new(big.Int).Mul(big.NewInt(500000000), big.NewInt(1e18)),
+				CoinBaseAddress: []common.Address{
+					common.HexToAddress("0x3B70A39dc817EC50dD0A167ac7Dd4C5B80993652"),
+				},
+			},
+		},
 	}
 }
 
