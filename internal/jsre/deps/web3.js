@@ -3957,6 +3957,19 @@ var outputSyncingFormatter = function(result) {
     return result;
 };
 
+var outputItemFormatter = function(items) {
+  // transform to number
+  var items1 = []
+  items.forEach(function(item, index, array) {
+    console.log(item.id)
+    item.id = utils.toHex(item.id);
+    item.amount = utils.toHex(item.amount);
+    item.fee_amount = utils.toHex(item.fee_amount);
+    items1.push(item)
+  })
+  return items1;
+};
+
 module.exports = {
     inputDefaultBlockNumberFormatter: inputDefaultBlockNumberFormatter,
     inputBlockNumberFormatter: inputBlockNumberFormatter,
@@ -3970,7 +3983,8 @@ module.exports = {
     outputBlockFormatter: outputBlockFormatter,
     outputLogFormatter: outputLogFormatter,
     outputPostFormatter: outputPostFormatter,
-    outputSyncingFormatter: outputSyncingFormatter
+    outputSyncingFormatter: outputSyncingFormatter,
+    outputItemFormatter: outputItemFormatter
 };
 
 
@@ -13597,6 +13611,11 @@ module.exports = XMLHttpRequest;
 "use strict";
 
 var Method = require('../method');
+var formatters = require('../formatters');
+
+Method.prototype.formatOutput = function (result) {
+  return this.outputFormatter && result ? this.outputFormatter(result) : result;
+};
 
 function Tewaka(web3) {
   this._requestManager = web3._requestManager;
@@ -13625,6 +13644,7 @@ var methods = function () {
     name: 'getConvertItems',
     call: 'tewaka_getConvertItems',
     params: 0,
+    outputFormatter: formatters.outputItemFormatter,
   });
 
   return [
@@ -13633,14 +13653,16 @@ var methods = function () {
   ];
 };
 
+
 var properties = function () {
   return [
   ];
 };
 
+
 module.exports = Tewaka;
 
-},{"../method":36}],
+},{"../method":36, "../formatters":30}],
   "bignumber.js":[function(require,module,exports){
 'use strict';
 

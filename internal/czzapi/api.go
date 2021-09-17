@@ -2118,6 +2118,6 @@ func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*types.Conve
 		log.Error("Staking load error", "error", err)
 		return nil, err
 	}
-
+	//fmt.Println(tewaka.ConvertItems[0].ID.String())
 	return tewaka.ConvertItems, nil
 }

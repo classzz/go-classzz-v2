@@ -62,8 +62,8 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0x089f49d3d61abb29967644b2a5b0ca162b337e52|"
-	hecoPoolAddr = ""
+	ethPoolAddr  = "0xDe9F26bbE9f32C6EdEF1923599FC888462091f78|"
+	hecoPoolAddr = "0xe707Ccc3ddC1d0d533e0c144B75cbf90d232cDA8|"
 	bscPoolAddr  = ""
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
