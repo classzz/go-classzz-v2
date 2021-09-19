@@ -49,8 +49,8 @@ var (
 	MortgageToMin = new(big.Int).SetUint64(257)
 	MortgageToMax = new(big.Int).SetUint64(356)
 
-	mimState = new(big.Int).Mul(big.NewInt(1000000), baseUnit)
-	Address0 = common.BytesToAddress([]byte{0})
+	mimStakingAmount = new(big.Int).Mul(big.NewInt(1000000), baseUnit)
+	Address0         = common.BytesToAddress([]byte{0})
 
 	// i.e. contractAddress = 0x0000000000000000000000000000746577616b61
 	TeWaKaAddress = common.BytesToAddress([]byte("tewaka"))
@@ -62,9 +62,9 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0xDe9F26bbE9f32C6EdEF1923599FC888462091f78|"
-	hecoPoolAddr = "0xe707Ccc3ddC1d0d533e0c144B75cbf90d232cDA8|"
-	bscPoolAddr  = ""
+	ethPoolAddr  = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
+	hecoPoolAddr = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|0x601aF7000f28bF612c7478EBCa0154a97a828dB8|"
+	bscPoolAddr  = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|0xE4280448d7600BafE2c7384E49b990845CeA0ce4|"
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
 	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
@@ -172,7 +172,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 	}
 
 	//
-	if args.StakingAmount.Cmp(mimState) < 0 {
+	if args.StakingAmount.Cmp(mimStakingAmount) < 0 {
 		return nil, fmt.Errorf("mortgage StakingAmount %s", "StakingAmount <  emimState")
 	}
 
@@ -274,7 +274,7 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 
 	if args.StakingAmount.Cmp(big.NewInt(0)) > 0 {
 		//
-		if args.StakingAmount.Cmp(mimState) < 0 {
+		if args.StakingAmount.Cmp(mimStakingAmount) < 0 {
 			return nil, fmt.Errorf("update StakingAmount %s", "StakingAmount <  emimState")
 		}
 
@@ -575,7 +575,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	}
 
 	evm.StateDB.SubBalance(from, args.Amount)
-	evm.StateDB.AddBalance(CoinPools[uint8(args.ConvertType.Uint64())], new(big.Int).Sub(args.Amount, item.FeeAmount))
+	evm.StateDB.AddBalance(CoinPools[ConvertType], new(big.Int).Sub(args.Amount, item.FeeAmount))
 	evm.StateDB.AddBalance(Address0, item.FeeAmount)
 
 	tewaka.Convert(item)
