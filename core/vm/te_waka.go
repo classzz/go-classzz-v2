@@ -62,8 +62,8 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
-	hecoPoolAddr = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|0x601aF7000f28bF612c7478EBCa0154a97a828dB8|"
+	ethPoolAddr  = "0xf3fB263245aCb23A481DC32b0Cf4F52074C84475|"
+	hecoPoolAddr = "0xecdb2FFF196c74820D687CB8721A1ee56117C1b2|0x601aF7000f28bF612c7478EBCa0154a97a828dB8|"
 	bscPoolAddr  = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|0xE4280448d7600BafE2c7384E49b990845CeA0ce4|"
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
@@ -658,7 +658,13 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	amountPool := evm.StateDB.GetBalance(CoinPools[AssetType])
-	TxAmount := new(big.Int).Mul(logs.AmountOut, Int10)
+
+	Amount := logs.AmountOut
+	if logs.AmountOut.Cmp(big.NewInt(0)) == 0 {
+		Amount = logs.AmountIn
+	}
+
+	TxAmount := new(big.Int).Mul(Amount, Int10)
 	if TxAmount.Cmp(amountPool) > 0 {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) tx amount [%d] > pool [%d]", netName, TxAmount.Uint64(), amountPool)
 	}
@@ -711,8 +717,20 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	copy(sig[32-len(r):32], r)
 	copy(sig[64-len(s):64], s)
 	sig[64] = V
-	a := types.NewEIP155Signer(chainID)
+
+	fmt.Println("chainid", chainID.Int64())
+	a := types.NewEIP155Signer(big.NewInt(4))
 	pk, err := crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+
+	fmt.Println("pk", hex.EncodeToString(pk))
+	a1 := types.NewLondonSigner(big.NewInt(4))
+	pk, _ = crypto.Ecrecover(a1.Hash(extTx).Bytes(), sig)
+
+	fmt.Println("pk", hex.EncodeToString(pk))
+	a2 := types.NewEIP2930Signer(big.NewInt(4))
+	pk, _ = crypto.Ecrecover(a2.Hash(extTx).Bytes(), sig)
+
+	fmt.Println("pk", hex.EncodeToString(pk))
 	if err != nil {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Ecrecover err: %s", netName, err)
 	}
@@ -722,7 +740,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		ConvertType: uint8(logs.ConvertType.Uint64()),
 		TxHash:      TxHash,
 		PubKey:      pk,
-		Amount:      logs.AmountOut,
+		Amount:      Amount,
 		Path:        logs.ToPath,
 		RouterAddr:  logs.ToRouterAddr,
 		IsInsurance: logs.IsInsurance,
