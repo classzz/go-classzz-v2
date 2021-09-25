@@ -46,6 +46,7 @@ const (
 var (
 	baseUnit      = new(big.Int).Exp(big.NewInt(10), big.NewInt(18), nil)
 	Int10         = new(big.Int).Exp(big.NewInt(10), big.NewInt(10), nil)
+	Int1000       = big.NewInt(1000)
 	MortgageToMin = new(big.Int).SetUint64(257)
 	MortgageToMax = new(big.Int).SetUint64(356)
 
@@ -388,12 +389,14 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	t2 := time.Now()
 
 	if item.ConvertType == ExpandedTxConvert_Czz {
-		evm.StateDB.SubBalance(CoinPools[item.AssetType], Amount)
+
 		toaddresspuk, err := crypto.UnmarshalPubkey(item.PubKey)
 		if err != nil || toaddresspuk == nil {
 			return nil, err
 		}
 		toaddress := crypto.PubkeyToAddress(*toaddresspuk)
+
+		evm.StateDB.SubBalance(CoinPools[item.AssetType], Amount)
 		evm.StateDB.AddBalance(toaddress, new(big.Int).Sub(Amount, FeeAmount))
 		evm.StateDB.AddBalance(Address0, FeeAmount)
 	} else {
@@ -564,18 +567,18 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		IsInsurance: args.IsInsurance,
 	}
 
-	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
+	item.FeeAmount = new(big.Int).Div(item.Amount, Int1000)
 	IDHash := item.Hash()
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 
 	t2 := time.Now()
 
-	if have, want := evm.StateDB.GetBalance(from), args.Amount; have.Cmp(want) < 0 {
+	if have, want := evm.StateDB.GetBalance(from), item.Amount; have.Cmp(want) < 0 {
 		return nil, fmt.Errorf("%w: address %v have %v want %v", errors.New("insufficient funds for gas * price + value"), from, have, want)
 	}
 
 	evm.StateDB.SubBalance(from, args.Amount)
-	evm.StateDB.AddBalance(CoinPools[ConvertType], new(big.Int).Sub(args.Amount, item.FeeAmount))
+	evm.StateDB.AddBalance(CoinPools[ConvertType], new(big.Int).Sub(item.Amount, item.FeeAmount))
 	evm.StateDB.AddBalance(Address0, item.FeeAmount)
 
 	tewaka.Convert(item)
@@ -698,39 +701,41 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	}
 
 	Vb, R, S := extTx.RawSignatureValues()
-	var V byte
 
-	var chainID *big.Int
+	var plainV byte
 	if isProtectedV(Vb) {
-		chainID = deriveChainId(Vb)
-		V = byte(Vb.Uint64() - 35 - 2*chainID.Uint64())
+		chainID := deriveChainId(Vb).Uint64()
+		plainV = byte(Vb.Uint64() - 35 - 2*chainID)
 	} else {
-		V = byte(Vb.Uint64() - 27)
+		// If the signature is not optionally protected, we assume it
+		// must already be equal to the recovery id.
+		plainV = byte(Vb.Uint64())
 	}
 
-	if !crypto.ValidateSignatureValues(V, R, S, false) {
-		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ValidateSignatureValues err", netName)
+	if !crypto.ValidateSignatureValues(plainV, R, S, false) {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ValidateSignatureValues invalid transaction v, r, s values", netName)
 	}
+
 	// encode the signature in uncompressed format
 	r, s := R.Bytes(), S.Bytes()
 	sig := make([]byte, crypto.SignatureLength)
 	copy(sig[32-len(r):32], r)
 	copy(sig[64-len(s):64], s)
-	sig[64] = V
+	sig[64] = plainV
 
-	fmt.Println("chainid", chainID.Int64())
-	a := types.NewEIP155Signer(big.NewInt(4))
-	pk, err := crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+	var pk []byte
+	var err error
+	if extTx.Type() == types.LegacyTxType {
+		a := types.NewEIP155Signer(extTx.ChainId())
+		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+	} else if extTx.Type() == types.DynamicFeeTxType {
+		a := types.NewLondonSigner(extTx.ChainId())
+		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+	} else {
+		a := types.NewEIP2930Signer(extTx.ChainId())
+		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+	}
 
-	fmt.Println("pk", hex.EncodeToString(pk))
-	a1 := types.NewLondonSigner(big.NewInt(4))
-	pk, _ = crypto.Ecrecover(a1.Hash(extTx).Bytes(), sig)
-
-	fmt.Println("pk", hex.EncodeToString(pk))
-	a2 := types.NewEIP2930Signer(big.NewInt(4))
-	pk, _ = crypto.Ecrecover(a2.Hash(extTx).Bytes(), sig)
-
-	fmt.Println("pk", hex.EncodeToString(pk))
 	if err != nil {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Ecrecover err: %s", netName, err)
 	}
@@ -862,7 +867,7 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 func isProtectedV(V *big.Int) bool {
 	if V.BitLen() <= 8 {
 		v := V.Uint64()
-		return v != 27 && v != 28
+		return v != 27 && v != 28 && v != 1 && v != 0
 	}
 	// anything not 27 or 28 is considered protected
 	return true

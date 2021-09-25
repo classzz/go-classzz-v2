@@ -2104,7 +2104,43 @@ func (api *PublicTeWaKaAPI) GetPledgeInfo(ctx context.Context) ([]*types.Pledge,
 	return tewaka.PledgeInfos, nil
 }
 
-func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*types.ConvertItem, error) {
+// RPCTransaction represents a transaction that will serialize to the RPC representation of a transaction
+type RPCConvertItem struct {
+	ID          *hexutil.Big     `json:"id"`
+	AssetType   hexutil.Uint     `json:"asset_type"`
+	ConvertType hexutil.Uint     `json:"convert_type"`
+	TxHash      common.Hash      `json:"tx_hash"`
+	PubKey      hexutil.Bytes    `json:"pub_key"`
+	Amount      *hexutil.Big     `json:"amount"` // czz asset amount
+	FeeAmount   *hexutil.Big     `json:"fee_amount"`
+	Path        []common.Address `json:"path"`
+	RouterAddr  common.Address   `json:"router_addr"`
+	Slippage    *hexutil.Big     `json:"slippage"`
+	IsInsurance bool             `json:"is_insurance"`
+	Extra       hexutil.Bytes    `json:"extra"`
+}
+
+func NewRPCConvertItems(item *types.ConvertItem) *RPCConvertItem {
+
+	it := &RPCConvertItem{
+		ID:          (*hexutil.Big)(item.ID),
+		AssetType:   hexutil.Uint(item.AssetType),
+		ConvertType: hexutil.Uint(item.ConvertType),
+		TxHash:      item.TxHash,
+		PubKey:      hexutil.Bytes(item.PubKey),
+		Amount:      (*hexutil.Big)(item.Amount),
+		FeeAmount:   (*hexutil.Big)(item.FeeAmount),
+		Path:        item.Path,
+		RouterAddr:  item.RouterAddr,
+		Slippage:    (*hexutil.Big)(item.Slippage),
+		IsInsurance: item.IsInsurance,
+		Extra:       hexutil.Bytes(item.Extra),
+	}
+
+	return it
+}
+
+func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*RPCConvertItem, error) {
 
 	tewaka := vm.NewTeWakaImpl()
 	stateDb, _, err := api.b.StateAndHeaderByNumber(ctx, -1)
@@ -2118,6 +2154,12 @@ func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*types.Conve
 		log.Error("Staking load error", "error", err)
 		return nil, err
 	}
+
+	ritem := make([]*RPCConvertItem, 0, 0)
+	for _, v := range tewaka.ConvertItems {
+		ritem = append(ritem, NewRPCConvertItems(v))
+	}
+
 	//fmt.Println(tewaka.ConvertItems[0].ID.String())
-	return tewaka.ConvertItems, nil
+	return ritem, nil
 }

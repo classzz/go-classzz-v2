@@ -3940,7 +3940,6 @@ var inputAddressFormatter = function (address) {
     throw new Error('invalid address');
 };
 
-
 var outputSyncingFormatter = function(result) {
     if (!result) {
         return result;
@@ -3961,7 +3960,6 @@ var outputItemFormatter = function(items) {
   // transform to number
   var items1 = []
   items.forEach(function(item, index, array) {
-    console.log(item.id)
     item.id = utils.toHex(item.id);
     item.amount = utils.toHex(item.amount);
     item.fee_amount = utils.toHex(item.fee_amount);
