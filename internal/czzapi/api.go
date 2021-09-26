@@ -2160,6 +2160,5 @@ func (api *PublicTeWaKaAPI) GetConvertItems(ctx context.Context) ([]*RPCConvertI
 		ritem = append(ritem, NewRPCConvertItems(v))
 	}
 
-	//fmt.Println(tewaka.ConvertItems[0].ID.String())
 	return ritem, nil
 }
