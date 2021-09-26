@@ -575,7 +575,7 @@ func (ec *Client) GetConvertItem(ctx context.Context) ([]*types.ConvertItem, err
 			TxHash:      v.TxHash,
 			PubKey:      ([]byte)(v.PubKey),
 			Amount:      v.Amount.ToInt(),
-			FeeAmount:   v.Amount.ToInt(),
+			FeeAmount:   v.FeeAmount.ToInt(),
 			Path:        v.Path,
 			RouterAddr:  v.RouterAddr,
 			Slippage:    v.Slippage.ToInt(),
