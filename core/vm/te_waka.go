@@ -520,7 +520,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("convert", context...)
+	log.Info("confirm", context...)
 
 	return nil, nil
 }
@@ -608,7 +608,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("convert", context...)
+	log.Info("casting", context...)
 
 	return nil, nil
 }
