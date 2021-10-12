@@ -67,16 +67,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, new(EthashConfig), nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Classzz core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
 
-	TestChainConfig = &ChainConfig{big.NewInt(100), big.NewInt(0), nil, nil, nil, nil, nil, new(EthashConfig), nil}
+	TestChainConfig = &ChainConfig{big.NewInt(100), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -139,10 +139,11 @@ type ChainConfig struct {
 	EWASMBlock    *big.Int `json:"ewasmBlock,omitempty"`    // EWASM switch block (nil = no fork, 0 = already activated)
 	NoRewardBlock *big.Int `json:"noRewardBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
-	EthClient  []*rpc.Client `json:"eth_client"`
-	HecoClient []*rpc.Client `json:"heco_client"`
-	BscClient  []*rpc.Client `json:"bsc_client"`
-	OkexClient []*rpc.Client `json:"okex_client"`
+	EthClient     []*rpc.Client `json:"eth_client"`
+	HecoClient    []*rpc.Client `json:"heco_client"`
+	BscClient     []*rpc.Client `json:"bsc_client"`
+	OecClient     []*rpc.Client `json:"oec_client"`
+	PolygonClient []*rpc.Client `json:"polygon_client"`
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty"`

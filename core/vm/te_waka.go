@@ -63,9 +63,11 @@ var (
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
 	}
 
-	ethPoolAddr  = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
-	hecoPoolAddr = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|0x601aF7000f28bF612c7478EBCa0154a97a828dB8|"
-	bscPoolAddr  = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|0xE4280448d7600BafE2c7384E49b990845CeA0ce4|"
+	ethPoolAddr     = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
+	hecoPoolAddr    = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|"
+	bscPoolAddr     = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|"
+	oecPoolAddr     = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
+	polygonPoolAddr = "0xa4f9ba054bA5B0ff7793A21924d2782A221680B0|"
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
 	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
@@ -379,6 +381,16 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, TxHash); err != nil {
 			return nil, err
 		}
+	case ExpandedTxConvert_OCzz:
+		client := evm.chainConfig.OecClient[rand.Intn(len(evm.chainConfig.OecClient))]
+		if item, err = verifyConvertEthereumTypeTx("OEC", evm, client, AssetType, TxHash); err != nil {
+			return nil, err
+		}
+	case ExpandedTxConvert_PCzz:
+		client := evm.chainConfig.PolygonClient[rand.Intn(len(evm.chainConfig.PolygonClient))]
+		if item, err = verifyConvertEthereumTypeTx("Polygon", evm, client, AssetType, TxHash); err != nil {
+			return nil, err
+		}
 	}
 
 	Amount := new(big.Int).Mul(item.Amount, Int10)
@@ -688,15 +700,23 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 
 	if AssetType == ExpandedTxConvert_ECzz {
 		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ETh [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	} else if AssetType == ExpandedTxConvert_HCzz {
 		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Heco [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
 		}
 	} else if AssetType == ExpandedTxConvert_BCzz {
 		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
+		}
+	} else if AssetType == ExpandedTxConvert_OCzz {
+		if !strings.Contains(strings.ToUpper(oecPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), oecPoolAddr)
+		}
+	} else if AssetType == ExpandedTxConvert_PCzz {
+		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
 		}
 	}
 
@@ -849,15 +869,23 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	// toaddress
 	if ConvertType == ExpandedTxConvert_ECzz {
 		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ETh [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
 		}
 	} else if ConvertType == ExpandedTxConvert_HCzz {
 		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Heco [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
 		}
 	} else if ConvertType == ExpandedTxConvert_BCzz {
 		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Bsc [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_OCzz {
+		if !strings.Contains(strings.ToUpper(oecPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), oecPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_PCzz {
+		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
 		}
 	}
 
