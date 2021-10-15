@@ -241,7 +241,7 @@ func mortgage(evm *EVM, contract *Contract, input []byte) (ret []byte, err error
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("mortgage", context...)
+	log.Debug("mortgage", context...)
 	return nil, nil
 }
 
@@ -328,7 +328,7 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("update", context...)
+	log.Debug("update", context...)
 	return nil, nil
 }
 
@@ -446,7 +446,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("convert", context...)
+	log.Debug("convert", context...)
 
 	return nil, nil
 }
@@ -532,7 +532,7 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("confirm", context...)
+	log.Debug("confirm", context...)
 
 	return nil, nil
 }
@@ -620,7 +620,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		"insert", common.PrettyDuration(t3.Sub(t2)), "save", common.PrettyDuration(t4.Sub(t3)),
 		"log", common.PrettyDuration(time.Since(t4)), "elapsed", common.PrettyDuration(time.Since(t0)),
 	}
-	log.Info("casting", context...)
+	log.Debug("casting", context...)
 
 	return nil, nil
 }
