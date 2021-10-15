@@ -691,7 +691,7 @@ func decodePrealloc(data string) GenesisAlloc {
 	return ga
 }
 
-func CommitClient(EthClient, HecoClient, BscClient, OkexClient []string, param *params.ChainConfig) (*params.ChainConfig, error) {
+func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []string, param *params.ChainConfig) (*params.ChainConfig, error) {
 
 	for _, v := range EthClient {
 
@@ -753,7 +753,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OkexClient []string, param *
 		param.BscClient = append(param.BscClient, client)
 	}
 
-	for _, v := range OkexClient {
+	for _, v := range OecClient {
 
 		if v[:4] != "http" {
 			v = "http://" + v
@@ -769,8 +769,28 @@ func CommitClient(EthClient, HecoClient, BscClient, OkexClient []string, param *
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("okex rpc successed", "url", v, "block", number)
-		param.OkexClient = append(param.OkexClient, client)
+		log.Info("oec rpc successed", "url", v, "block", number)
+		param.OecClient = append(param.OecClient, client)
+	}
+
+	for _, v := range PolygonClient {
+
+		if v[:4] != "http" {
+			v = "http://" + v
+		}
+		client, err := rpc.Dial(v)
+		if err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+
+		var number hexutil.Uint64
+		if err := client.Call(&number, "eth_blockNumber"); err != nil {
+			log.Warn("rpc failed", "url", v, "err", err)
+			return nil, err
+		}
+		log.Info("Polygon rpc successed", "url", v, "block", number)
+		param.OecClient = append(param.OecClient, client)
 	}
 
 	return param, nil

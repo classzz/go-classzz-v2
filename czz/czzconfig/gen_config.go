@@ -52,6 +52,7 @@ func (c Config) MarshalTOML() (interface{}, error) {
 		HecoClient              []string `toml:",omitempty"`
 		BscClient               []string `toml:",omitempty"`
 		OkexClient              []string `toml:",omitempty"`
+		PolygonClient           []string `toml:",omitempty"`
 		Miner                   miner.Config
 		Ethash                  ethash.Config
 		TxPool                  core.TxPoolConfig
@@ -98,7 +99,8 @@ func (c Config) MarshalTOML() (interface{}, error) {
 	enc.EthClient = c.EthClient
 	enc.HecoClient = c.HecoClient
 	enc.BscClient = c.BscClient
-	enc.OkexClient = c.OkexClient
+	enc.OkexClient = c.OecClient
+	enc.PolygonClient = c.PolygonClient
 	enc.Miner = c.Miner
 	enc.Ethash = c.Ethash
 	enc.TxPool = c.TxPool
@@ -149,7 +151,8 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 		EthClient               []string `toml:",omitempty"`
 		HecoClient              []string `toml:",omitempty"`
 		BscClient               []string `toml:",omitempty"`
-		OkexClient              []string `toml:",omitempty"`
+		OecClient               []string `toml:",omitempty"`
+		PolygonClient           []string `toml:",omitempty"`
 		Miner                   *miner.Config
 		Ethash                  *ethash.Config
 		TxPool                  *core.TxPoolConfig
@@ -265,8 +268,11 @@ func (c *Config) UnmarshalTOML(unmarshal func(interface{}) error) error {
 	if dec.BscClient != nil {
 		c.BscClient = dec.BscClient
 	}
-	if dec.OkexClient != nil {
-		c.OkexClient = dec.OkexClient
+	if dec.OecClient != nil {
+		c.OecClient = dec.OecClient
+	}
+	if dec.PolygonClient != nil {
+		c.PolygonClient = dec.PolygonClient
 	}
 	if dec.Miner != nil {
 		c.Miner = *dec.Miner
