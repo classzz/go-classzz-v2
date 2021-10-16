@@ -49,6 +49,7 @@ var (
 	MainnetChainConfig = &ChainConfig{
 		ChainID: big.NewInt(61),
 		Ethash:  new(EthashConfig),
+		CIP_1:   big.NewInt(150_000),
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -67,16 +68,16 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil}
+	AllEthashProtocolChanges = &ChainConfig{}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Classzz core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(63), big.NewInt(0), nil, nil, nil, nil, nil, nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}}
+	AllCliqueProtocolChanges = &ChainConfig{}
 
-	TestChainConfig = &ChainConfig{big.NewInt(100), big.NewInt(0), nil, nil, nil, nil, nil, nil, new(EthashConfig), nil}
+	TestChainConfig = &ChainConfig{}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 )
 
@@ -139,6 +140,8 @@ type ChainConfig struct {
 	EWASMBlock    *big.Int `json:"ewasmBlock,omitempty"`    // EWASM switch block (nil = no fork, 0 = already activated)
 	NoRewardBlock *big.Int `json:"noRewardBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
+	CIP_1 *big.Int `json:"CIP_1,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
+
 	EthClient     []*rpc.Client `json:"eth_client"`
 	HecoClient    []*rpc.Client `json:"heco_client"`
 	BscClient     []*rpc.Client `json:"bsc_client"`
@@ -189,6 +192,11 @@ func (c *ChainConfig) String() string {
 // IsNoReward returns whether num is either equal to the Merge fork block or greater.
 func (c *ChainConfig) IsNoReward(num *big.Int) bool {
 	return isForked(c.NoRewardBlock, num)
+}
+
+// IsNoReward returns whether num is either equal to the Merge fork block or greater.
+func (c *ChainConfig) IsCIP1(num *big.Int) bool {
+	return isForked(c.CIP_1, num)
 }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork

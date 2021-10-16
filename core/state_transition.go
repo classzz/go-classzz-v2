@@ -115,12 +115,17 @@ func (result *ExecutionResult) Revert() []byte {
 }
 
 // IntrinsicGas computes the 'intrinsic gas' for a message with the given data.
-func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool) (uint64, error) {
+func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation bool, isCIP1 bool) (uint64, error) {
 	// Set the starting gas for the raw transaction
 	var gas uint64
 	if isContractCreation {
 		gas = params.TxGasContractCreation
 	}
+
+	if isCIP1 {
+		gas = params.TxGas
+	}
+
 	// Bump the required gas by the amount of transactional data
 	if len(data) > 0 {
 		// Zero and non-zero bytes are priced differently
@@ -129,6 +134,7 @@ func IntrinsicGas(data []byte, accessList types.AccessList, isContractCreation b
 			if byt != 0 {
 				nz++
 			}
+
 		}
 		// Make sure we don't exceed uint64 for all data combinations
 		//nonZeroGas := params.TxDataNonZeroGasFrontier
@@ -284,9 +290,10 @@ func (st *StateTransition) TransitionDb() (*ExecutionResult, error) {
 	msg := st.msg
 	sender := vm.AccountRef(msg.From())
 	contractCreation := msg.To() == nil
+	isCIP1 := st.evm.ChainConfig().IsCIP1(st.evm.Context.BlockNumber)
 
 	// Check clauses 4-5, subtract intrinsic gas if everything is correct
-	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation)
+	gas, err := IntrinsicGas(st.data, st.msg.AccessList(), contractCreation, isCIP1)
 	if err != nil {
 		return nil, err
 	}

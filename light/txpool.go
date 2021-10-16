@@ -19,6 +19,7 @@ package light
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
@@ -66,6 +67,7 @@ type TxPool struct {
 	mined        map[common.Hash][]*types.Transaction // mined transactions by block hash
 	clearIdx     uint64                               // earliest block nr that can contain mined tx info
 
+	cip1 bool
 	//istanbul bool // Fork indicator whether we are in the istanbul stage.
 	//eip2718  bool // Fork indicator whether we are in the eip2718 stage.
 }
@@ -311,8 +313,8 @@ func (pool *TxPool) setNewHead(head *types.Header) {
 	pool.relay.NewHead(pool.head, m, r)
 
 	// Update fork indicator by next pending block number
-	//next := new(big.Int).Add(head.Number, big.NewInt(1))
-	//pool.istanbul = pool.config.IsIstanbul(next)
+	next := new(big.Int).Add(head.Number, big.NewInt(1))
+	pool.cip1 = pool.config.IsCIP1(next)
 	//pool.eip2718 = pool.config.IsBerlin(next)
 }
 
@@ -381,7 +383,7 @@ func (pool *TxPool) validateTx(ctx context.Context, tx *types.Transaction) error
 	}
 
 	// Should supply enough intrinsic gas
-	gas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil)
+	gas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, pool.cip1)
 	if err != nil {
 		return err
 	}
