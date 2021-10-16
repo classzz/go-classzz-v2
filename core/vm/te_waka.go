@@ -499,6 +499,16 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash); err != nil {
 			return nil, err
 		}
+	case ExpandedTxConvert_OCzz:
+		client := evm.chainConfig.OecClient[rand.Intn(len(evm.chainConfig.OecClient))]
+		if item, err = verifyConfirmEthereumTypeTx("OEC", client, tewaka, ConvertType, TxHash); err != nil {
+			return nil, err
+		}
+	case ExpandedTxConvert_PCzz:
+		client := evm.chainConfig.PolygonClient[rand.Intn(len(evm.chainConfig.PolygonClient))]
+		if item, err = verifyConfirmEthereumTypeTx("Polygon", client, tewaka, ConvertType, TxHash); err != nil {
+			return nil, err
+		}
 	}
 
 	t2 := time.Now()
