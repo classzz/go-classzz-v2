@@ -395,7 +395,7 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	Amount := new(big.Int).Mul(item.Amount, Int10)
 	FeeAmount := big.NewInt(0).Div(Amount, big.NewInt(1000))
-	item.FeeAmount = big.NewInt(0).Div(item.Amount, big.NewInt(1000))
+	item.FeeAmount = FeeAmount
 	IDHash := item.Hash()
 	item.ID = new(big.Int).SetBytes(IDHash[:10])
 	t2 := time.Now()
