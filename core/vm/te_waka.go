@@ -577,6 +577,14 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, err
 	}
 
+	toaddresspuk, err := crypto.DecompressPubkey(args.PubKey)
+	if err != nil || toaddresspuk == nil {
+		toaddresspuk, err = crypto.UnmarshalPubkey(args.PubKey)
+		if err != nil || toaddresspuk == nil {
+			return nil, fmt.Errorf("toaddresspuk [puk:%s] is err: %s", hex.EncodeToString(args.PubKey), err)
+		}
+	}
+
 	ConvertType := uint8(args.ConvertType.Uint64())
 
 	item := &types.ConvertItem{
