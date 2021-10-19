@@ -483,30 +483,32 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, ErrTxhashAlreadyInput
 	}
 
+	isCip2 := evm.chainConfig.IsCIP2(evm.Context.BlockNumber)
+
 	switch ConvertType {
 	case ExpandedTxConvert_ECzz:
 		client := evm.chainConfig.EthClient[rand.Intn(len(evm.chainConfig.EthClient))]
-		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, ConvertType, TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, ConvertType, TxHash, isCip2); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_HCzz:
 		client := evm.chainConfig.HecoClient[rand.Intn(len(evm.chainConfig.HecoClient))]
-		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, ConvertType, TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, ConvertType, TxHash, isCip2); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_BCzz:
 		client := evm.chainConfig.BscClient[rand.Intn(len(evm.chainConfig.BscClient))]
-		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash, isCip2); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_OCzz:
 		client := evm.chainConfig.OecClient[rand.Intn(len(evm.chainConfig.OecClient))]
-		if item, err = verifyConfirmEthereumTypeTx("OEC", client, tewaka, ConvertType, TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("OEC", client, tewaka, ConvertType, TxHash, isCip2); err != nil {
 			return nil, err
 		}
 	case ExpandedTxConvert_PCzz:
 		client := evm.chainConfig.PolygonClient[rand.Intn(len(evm.chainConfig.PolygonClient))]
-		if item, err = verifyConfirmEthereumTypeTx("Polygon", client, tewaka, ConvertType, TxHash); err != nil {
+		if item, err = verifyConfirmEthereumTypeTx("Polygon", client, tewaka, ConvertType, TxHash, isCip2); err != nil {
 			return nil, err
 		}
 	}
@@ -783,7 +785,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	return item, nil
 }
 
-func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
+func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
 
 	var receipt *types.Receipt
 	if err := client.Call(&receipt, "eth_getTransactionReceipt", TxHash); err != nil {
@@ -842,23 +844,32 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) ConvertType is [%d] not [%d] ", netName, ConvertType, item.ConvertType)
 	}
 
-	toaddresspuk, err := crypto.DecompressPubkey(item.PubKey)
-	if err != nil || toaddresspuk == nil {
-		toaddresspuk, err = crypto.UnmarshalPubkey(item.PubKey)
-		if err != nil || toaddresspuk == nil {
-			return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) toaddresspuk [puk:%s] is err: %s", netName, hex.EncodeToString(item.PubKey), err)
+	if isCip2 {
+		if len(item.PubKey) > 0 {
+			toaddresspuk, err := crypto.DecompressPubkey(item.PubKey)
+			if err != nil || toaddresspuk == nil {
+				toaddresspuk, err = crypto.UnmarshalPubkey(item.PubKey)
+				if err != nil || toaddresspuk == nil {
+					return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) toaddresspuk [puk:%s] is err: %s", netName, hex.EncodeToString(item.PubKey), err)
+				}
+			}
+			toaddress := crypto.PubkeyToAddress(*toaddresspuk)
+			if logs.To.String() != toaddress.String() {
+				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), toaddress.String())
+			}
+		} else {
+			fromAddr := common.BytesToAddress(item.Extra)
+			if logs.To.String() != fromAddr.String() {
+				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), fromAddr.String())
+			}
 		}
-	}
-
-	toaddress := crypto.PubkeyToAddress(*toaddresspuk)
-	if logs.To.String() != toaddress.String() {
-		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), toaddress.String())
 	}
 
 	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
 	if item.AssetType == ExpandedTxConvert_Czz {
 		amount2 = new(big.Int).Div(amount2, Int10)
 	}
+
 	if logs.AmountIn.Cmp(amount2) != 0 {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
 	}
