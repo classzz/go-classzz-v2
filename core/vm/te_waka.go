@@ -91,20 +91,13 @@ type StakeContract struct{}
 
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
-	AbiCIP2TeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI_CIP2))
 	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
 }
 
 // RunStaking execute staking contract
 func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 
-	var method *abi.Method
-	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) {
-		method, err = AbiCIP2TeWaKa.MethodById(input)
-	} else {
-		method, err = AbiTeWaKa.MethodById(input)
-	}
-
+	method, err := AbiTeWaKa.MethodById(input)
 	if err != nil {
 		log.Error("No method found")
 		return nil, ErrExecutionReverted
@@ -584,9 +577,6 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, err
 	}
 
-	item := &types.ConvertItem{}
-	ConvertType := uint8(args.ConvertType.Uint64())
-
 	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) && len(args.PubKey) > 0 {
 		toaddresspuk, err := crypto.DecompressPubkey(args.PubKey)
 		if err != nil || toaddresspuk == nil {
@@ -595,26 +585,23 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 				return nil, fmt.Errorf("toaddresspuk [puk:%s] is err: %s", hex.EncodeToString(args.PubKey), err)
 			}
 		}
-		item = &types.ConvertItem{
-			ConvertType: ConvertType,
-			Path:        args.Path,
-			Amount:      args.Amount,
-			PubKey:      args.PubKey,
-			RouterAddr:  args.RouterAddr,
-			Slippage:    args.Slippage,
-			IsInsurance: args.IsInsurance,
-			Extra:       from.Bytes(),
-		}
-	} else {
-		item = &types.ConvertItem{
-			ConvertType: ConvertType,
-			Path:        args.Path,
-			Amount:      args.Amount,
-			PubKey:      args.PubKey,
-			RouterAddr:  args.RouterAddr,
-			Slippage:    args.Slippage,
-			IsInsurance: args.IsInsurance,
-		}
+	}
+
+	item := &types.ConvertItem{}
+	ConvertType := uint8(args.ConvertType.Uint64())
+
+	item = &types.ConvertItem{
+		ConvertType: ConvertType,
+		Path:        args.Path,
+		Amount:      args.Amount,
+		PubKey:      args.PubKey,
+		RouterAddr:  args.RouterAddr,
+		Slippage:    args.Slippage,
+		IsInsurance: args.IsInsurance,
+	}
+
+	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) {
+		item.Extra = from.Bytes()
 	}
 
 	item.FeeAmount = new(big.Int).Div(item.Amount, Int1000)
@@ -1223,305 +1210,6 @@ const TeWakaABI = `
             {
                 "type":"bool",
                 "name":"IsInsurance"
-            }
-        ],
-        "constant":false,
-        "payable":false,
-        "type":"function"
-    }
-]
-`
-
-const TeWakaABI_CIP2 = `
-[
-    {
-        "name":"mortgage",
-        "inputs":[
-            {
-                "type":"bytes",
-                "name":"pubKey"
-            },
-  			{
-                "type":"address",
-                "name":"toAddress"
-            },
-            {
-                "type":"uint256",
-                "name":"stakingAmount"
-            },
-            {
-                "type":"address[]",
-                "name":"coinBaseAddress"
-            }
-        ],
-        "anonymous":false,
-        "type":"event"
-    },
-    {
-        "name":"mortgage",
-        "outputs":[
-
-        ],
-        "inputs":[
- 			{
-                "type":"bytes",
-                "name":"pubKey"
-            },
-            {
-                "type":"address",
-                "name":"toAddress"
-            },
-            {
-                "type":"uint256",
-                "name":"stakingAmount"
-            },
-            {
-                "type":"address[]",
-                "name":"coinBaseAddress"
-            }
-        ],
-        "constant":false,
-        "payable":false,
-        "type":"function"
-    },
-    {
-        "name":"update",
-        "inputs":[
-			{
-                "type":"uint256",
-                "name":"stakingAmount"
-            },
-            {
-                "type":"address[]",
-                "name":"coinBaseAddress"
-            }
-        ],
-        "anonymous":false,
-        "type":"event"
-    },
-    {
-        "name":"update",
-        "outputs":[
-
-        ],
-        "inputs":[
-			{
-                "type":"uint256",
-                "name":"stakingAmount"
-            },
-            {
-                "type":"address[]",
-                "name":"coinBaseAddress"
-            }
-        ],
-        "constant":false,
-        "payable":false,
-        "type":"function"
-    },
-    {
-        "name":"convert",
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"ID"
-            },
-            {
-                "type":"uint256",
-                "name":"AssetType"
-            },
-            {
-                "type":"uint256",
-                "name":"ConvertType"
-            },
-            {
-                "type":"string",
-                "name":"TxHash"
-            },
-            {
-                "type":"address[]",
-                "name":"Path"
-            },
-            {
-                "type":"address",
-                "name":"RouterAddr"
-            },
-            {
-                "type":"bytes",
-                "name":"PubKey"
-            },
-            {
-                "type":"uint256",
-                "name":"Amount"
-            },
-            {
-                "type":"uint256",
-                "name":"FeeAmount"
-            },
-            {
-                "type":"uint256",
-                "name":"Slippage"
-            },
-            {
-                "type":"bool",
-                "name":"IsInsurance"
-            },
-            {
-                "type":"bytes",
-                "name":"Extra"
-            }
-        ],
-        "anonymous":false,
-        "type":"event"
-    },
-    {
-        "name":"convert",
-        "outputs":[
-
-        ],
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"AssetType"
-            },
-            {
-                "type":"string",
-                "name":"TxHash"
-            }
-        ],
-        "constant":false,
-        "payable":false,
-        "type":"function"
-    },
-    {
-        "name":"confirm",
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"ID"
-            },
-            {
-                "type":"uint256",
-                "name":"AssetType"
-            },
-            {
-                "type":"uint256",
-                "name":"ConvertType"
-            },
-            {
-                "type":"string",
-                "name":"TxHash"
-            }
-        ],
-        "anonymous":false,
-        "type":"event"
-    },
-    {
-        "name":"confirm",
-        "outputs":[
-
-        ],
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"ConvertType"
-            },
-            {
-                "type":"string",
-                "name":"TxHash"
-            }
-        ],
-        "constant":false,
-        "payable":false,
-        "type":"function"
-    },
-    {
-        "name":"casting",
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"ID"
-            },
-            {
-                "type":"uint256",
-                "name":"ConvertType"
-            },
-            {
-                "type":"address[]",
-                "name":"Path"
-            },
-            {
-                "type":"bytes",
-                "name":"PubKey"
-            },
-            {
-                "type":"uint256",
-                "name":"Amount"
-            },
-            {
-                "type":"uint256",
-                "name":"FeeAmount"
-            },
-            {
-                "type":"address",
-                "name":"RouterAddr"
-            },
-            {
-                "type":"uint256",
-                "name":"slippage"
-            },
-            {
-                "type":"bool",
-                "name":"IsInsurance"
-            },
-            {
-                "type":"bytes",
-                "name":"Extra"
-            }
-        ],
-        "anonymous":false,
-        "type":"event"
-    },
-    {
-        "name":"casting",
-        "outputs":[
-
-        ],
-        "inputs":[
-            {
-                "type":"uint256",
-                "name":"ConvertType"
-            },
-            {
-                "type":"uint256",
-                "name":"Amount"
-            },
-            {
-                "type":"address[]",
-                "name":"Path"
-            },
-            {
-                "type":"bytes",
-                "name":"PubKey"
-            },
-            {
-                "type":"address",
-                "name":"RouterAddr"
-            },
-            {
-                "type":"uint256",
-                "name":"slippage"
-            },
-            {
-                "type":"bool",
-                "name":"IsInsurance"
-            },
-            {
-				"type":"address",
-                "name":"FromAddr"
-            },
-            {
-                "type":"bytes",
-                "name":"Extra"
             }
         ],
         "constant":false,
