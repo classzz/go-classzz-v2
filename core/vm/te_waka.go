@@ -84,19 +84,26 @@ var TeWaKaGas = map[string]uint64{
 
 // Staking contract ABI
 var AbiTeWaKa abi.ABI
+var AbiCIP2TeWaKa abi.ABI
 var AbiCzzRouter abi.ABI
 
 type StakeContract struct{}
 
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
+	AbiCIP2TeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI_CIP2))
 	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
 }
 
 // RunStaking execute staking contract
 func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 
-	method, err := AbiTeWaKa.MethodById(input)
+	var method *abi.Method
+	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) {
+		method, err = AbiCIP2TeWaKa.MethodById(input)
+	} else {
+		method, err = AbiTeWaKa.MethodById(input)
+	}
 
 	if err != nil {
 		log.Error("No method found")
@@ -577,11 +584,13 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, err
 	}
 
-	toaddresspuk, err := crypto.DecompressPubkey(args.PubKey)
-	if err != nil || toaddresspuk == nil {
-		toaddresspuk, err = crypto.UnmarshalPubkey(args.PubKey)
+	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) {
+		toaddresspuk, err := crypto.DecompressPubkey(args.PubKey)
 		if err != nil || toaddresspuk == nil {
-			return nil, fmt.Errorf("toaddresspuk [puk:%s] is err: %s", hex.EncodeToString(args.PubKey), err)
+			toaddresspuk, err = crypto.UnmarshalPubkey(args.PubKey)
+			if err != nil || toaddresspuk == nil {
+				return nil, fmt.Errorf("toaddresspuk [puk:%s] is err: %s", hex.EncodeToString(args.PubKey), err)
+			}
 		}
 	}
 
@@ -716,26 +725,8 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) getTransactionByHash [txid:%s] err: %s", netName, TxHash, err)
 	}
 
-	if AssetType == ExpandedTxConvert_ECzz {
-		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
-		}
-	} else if AssetType == ExpandedTxConvert_HCzz {
-		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
-		}
-	} else if AssetType == ExpandedTxConvert_BCzz {
-		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
-		}
-	} else if AssetType == ExpandedTxConvert_OCzz {
-		if !strings.Contains(strings.ToUpper(oecPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), oecPoolAddr)
-		}
-	} else if AssetType == ExpandedTxConvert_PCzz {
-		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
-		}
+	if err := CheckToAddress(AssetType, netName, extTx); err != nil {
+		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) %s", netName, err)
 	}
 
 	Vb, R, S := extTx.RawSignatureValues()
@@ -884,30 +875,37 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txjson is nil [txid:%s]", netName, TxHash)
 	}
 
-	// toaddress
-	if ConvertType == ExpandedTxConvert_ECzz {
-		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
-		}
-	} else if ConvertType == ExpandedTxConvert_HCzz {
-		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
-		}
-	} else if ConvertType == ExpandedTxConvert_BCzz {
-		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
-		}
-	} else if ConvertType == ExpandedTxConvert_OCzz {
-		if !strings.Contains(strings.ToUpper(oecPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), oecPoolAddr)
-		}
-	} else if ConvertType == ExpandedTxConvert_PCzz {
-		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
-			return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
-		}
+	if err := CheckToAddress(ConvertType, netName, extTx); err != nil {
+		return nil, err
 	}
 
 	return item, nil
+}
+
+func CheckToAddress(ConvertType uint8, netName string, extTx *types.Transaction) error {
+	// toaddress
+	if ConvertType == ExpandedTxConvert_ECzz {
+		if !strings.Contains(strings.ToUpper(ethPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), ethPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_HCzz {
+		if !strings.Contains(strings.ToUpper(hecoPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), hecoPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_BCzz {
+		if !strings.Contains(strings.ToUpper(bscPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), bscPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_OCzz {
+		if !strings.Contains(strings.ToUpper(oecPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), oecPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_PCzz {
+		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
+		}
+	}
+	return nil
 }
 
 func isProtectedV(V *big.Int) bool {
@@ -1214,6 +1212,305 @@ const TeWakaABI = `
             {
                 "type":"bool",
                 "name":"IsInsurance"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    }
+]
+`
+
+const TeWakaABI_CIP2 = `
+[
+    {
+        "name":"mortgage",
+        "inputs":[
+            {
+                "type":"bytes",
+                "name":"pubKey"
+            },
+  			{
+                "type":"address",
+                "name":"toAddress"
+            },
+            {
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"mortgage",
+        "outputs":[
+
+        ],
+        "inputs":[
+ 			{
+                "type":"bytes",
+                "name":"pubKey"
+            },
+            {
+                "type":"address",
+                "name":"toAddress"
+            },
+            {
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"update",
+        "inputs":[
+			{
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"update",
+        "outputs":[
+
+        ],
+        "inputs":[
+			{
+                "type":"uint256",
+                "name":"stakingAmount"
+            },
+            {
+                "type":"address[]",
+                "name":"coinBaseAddress"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"convert",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"uint256",
+                "name":"FeeAmount"
+            },
+            {
+                "type":"uint256",
+                "name":"Slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            },
+            {
+                "type":"bytes",
+                "name":"Extra"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"convert",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"confirm",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"AssetType"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"confirm",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"string",
+                "name":"TxHash"
+            }
+        ],
+        "constant":false,
+        "payable":false,
+        "type":"function"
+    },
+    {
+        "name":"casting",
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ID"
+            },
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"uint256",
+                "name":"FeeAmount"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"uint256",
+                "name":"slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            },
+            {
+                "type":"bytes",
+                "name":"Extra"
+            }
+        ],
+        "anonymous":false,
+        "type":"event"
+    },
+    {
+        "name":"casting",
+        "outputs":[
+
+        ],
+        "inputs":[
+            {
+                "type":"uint256",
+                "name":"ConvertType"
+            },
+            {
+                "type":"uint256",
+                "name":"Amount"
+            },
+            {
+                "type":"address[]",
+                "name":"Path"
+            },
+            {
+                "type":"bytes",
+                "name":"PubKey"
+            },
+            {
+                "type":"address",
+                "name":"RouterAddr"
+            },
+            {
+                "type":"uint256",
+                "name":"slippage"
+            },
+            {
+                "type":"bool",
+                "name":"IsInsurance"
+            },
+            {
+				"type":"address",
+                "name":"FromAddr"
+            },
+            {
+                "type":"bytes",
+                "name":"Extra"
             }
         ],
         "constant":false,

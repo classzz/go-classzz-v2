@@ -50,6 +50,7 @@ var (
 		ChainID: big.NewInt(61),
 		Ethash:  new(EthashConfig),
 		CIP_1:   big.NewInt(150_000),
+		CIP_2:   big.NewInt(170_000),
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -141,6 +142,7 @@ type ChainConfig struct {
 	NoRewardBlock *big.Int `json:"noRewardBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
 	CIP_1 *big.Int `json:"CIP_1,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
+	CIP_2 *big.Int `json:"CIP_2,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
 	EthClient     []*rpc.Client `json:"eth_client"`
 	HecoClient    []*rpc.Client `json:"heco_client"`
@@ -194,9 +196,14 @@ func (c *ChainConfig) IsNoReward(num *big.Int) bool {
 	return isForked(c.NoRewardBlock, num)
 }
 
-// IsNoReward returns whether num is either equal to the Merge fork block or greater.
+// IsCIP1
 func (c *ChainConfig) IsCIP1(num *big.Int) bool {
 	return isForked(c.CIP_1, num)
+}
+
+// IsCIP2
+func (c *ChainConfig) IsCIP2(num *big.Int) bool {
+	return isForked(c.CIP_2, num)
 }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork
