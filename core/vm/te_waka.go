@@ -584,7 +584,10 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, err
 	}
 
-	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) {
+	item := &types.ConvertItem{}
+	ConvertType := uint8(args.ConvertType.Uint64())
+
+	if evm.chainConfig.IsCIP2(evm.Context.BlockNumber) && len(args.PubKey) > 0 {
 		toaddresspuk, err := crypto.DecompressPubkey(args.PubKey)
 		if err != nil || toaddresspuk == nil {
 			toaddresspuk, err = crypto.UnmarshalPubkey(args.PubKey)
@@ -592,18 +595,26 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 				return nil, fmt.Errorf("toaddresspuk [puk:%s] is err: %s", hex.EncodeToString(args.PubKey), err)
 			}
 		}
-	}
-
-	ConvertType := uint8(args.ConvertType.Uint64())
-
-	item := &types.ConvertItem{
-		ConvertType: ConvertType,
-		Path:        args.Path,
-		Amount:      args.Amount,
-		PubKey:      args.PubKey,
-		RouterAddr:  args.RouterAddr,
-		Slippage:    args.Slippage,
-		IsInsurance: args.IsInsurance,
+		item = &types.ConvertItem{
+			ConvertType: ConvertType,
+			Path:        args.Path,
+			Amount:      args.Amount,
+			PubKey:      args.PubKey,
+			RouterAddr:  args.RouterAddr,
+			Slippage:    args.Slippage,
+			IsInsurance: args.IsInsurance,
+			Extra:       from.Bytes(),
+		}
+	} else {
+		item = &types.ConvertItem{
+			ConvertType: ConvertType,
+			Path:        args.Path,
+			Amount:      args.Amount,
+			PubKey:      args.PubKey,
+			RouterAddr:  args.RouterAddr,
+			Slippage:    args.Slippage,
+			IsInsurance: args.IsInsurance,
+		}
 	}
 
 	item.FeeAmount = new(big.Int).Div(item.Amount, Int1000)
