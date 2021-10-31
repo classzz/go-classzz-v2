@@ -51,6 +51,7 @@ var (
 		Ethash:  new(EthashConfig),
 		CIP_1:   big.NewInt(150_000),
 		CIP_2:   big.NewInt(170_000),
+		CIP_3:   big.NewInt(220_000),
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -64,6 +65,7 @@ var (
 		ChainID: big.NewInt(62),
 		CIP_1:   big.NewInt(0),
 		CIP_2:   big.NewInt(0),
+		CIP_3:   big.NewInt(0),
 	}
 
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
@@ -145,6 +147,7 @@ type ChainConfig struct {
 
 	CIP_1 *big.Int `json:"CIP_1,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 	CIP_2 *big.Int `json:"CIP_2,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
+	CIP_3 *big.Int `json:"CIP_3,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
 	EthClient     []*rpc.Client `json:"eth_client"`
 	HecoClient    []*rpc.Client `json:"heco_client"`
@@ -206,6 +209,11 @@ func (c *ChainConfig) IsCIP1(num *big.Int) bool {
 // IsCIP2
 func (c *ChainConfig) IsCIP2(num *big.Int) bool {
 	return isForked(c.CIP_2, num)
+}
+
+// IsCIP3
+func (c *ChainConfig) IsCIP3(num *big.Int) bool {
+	return isForked(c.CIP_3, num)
 }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork

@@ -84,7 +84,6 @@ var TeWaKaGas = map[string]uint64{
 
 // Staking contract ABI
 var AbiTeWaKa abi.ABI
-var AbiCIP2TeWaKa abi.ABI
 var AbiCzzRouter abi.ABI
 
 type StakeContract struct{}
@@ -608,7 +607,13 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	item.FeeAmount = new(big.Int).Div(item.Amount, Int1000)
 	IDHash := item.Hash()
-	item.ID = new(big.Int).SetBytes(IDHash[:10])
+	Nonce := evm.StateDB.GetNonce(from)
+	isCip3 := evm.chainConfig.IsCIP3(evm.Context.BlockNumber)
+	if isCip3 {
+		item.ID = new(big.Int).Add(new(big.Int).SetBytes(IDHash[:10]), big.NewInt(int64(Nonce)))
+	} else {
+		item.ID = new(big.Int).SetBytes(IDHash[:10])
+	}
 
 	t2 := time.Now()
 
