@@ -790,7 +790,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			return nil, err
 		}
 		log.Info("Polygon rpc successed", "url", v, "block", number)
-		param.OecClient = append(param.OecClient, client)
+		param.PolygonClient = append(param.PolygonClient, client)
 	}
 
 	return param, nil
