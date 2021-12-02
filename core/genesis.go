@@ -709,7 +709,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("eth rpc successed", "url", v, "block", number)
+		log.Info("eth rpc successed", "url", v, "block", int64(number))
 		param.EthClient = append(param.EthClient, client)
 	}
 
@@ -729,7 +729,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("heco rpc successed", "url", v, "block", number)
+		log.Info("heco rpc successed", "url", v, "block", int64(number))
 		param.HecoClient = append(param.HecoClient, client)
 	}
 
@@ -749,7 +749,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("bsc rpc successed", "url", v, "block", number)
+		log.Info("bsc rpc successed", "url", v, "block", int64(number))
 		param.BscClient = append(param.BscClient, client)
 	}
 
@@ -769,7 +769,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("oec rpc successed", "url", v, "block", number)
+		log.Info("oec rpc successed", "url", v, "block", int64(number))
 		param.OecClient = append(param.OecClient, client)
 	}
 
@@ -789,7 +789,7 @@ func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient []s
 			log.Warn("rpc failed", "url", v, "err", err)
 			return nil, err
 		}
-		log.Info("Polygon rpc successed", "url", v, "block", number)
+		log.Info("Polygon rpc successed", "url", v, "block", int64(number))
 		param.PolygonClient = append(param.PolygonClient, client)
 	}
 
