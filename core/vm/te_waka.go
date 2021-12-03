@@ -121,7 +121,7 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 	}
 
 	if err != nil {
-		log.Warn("Staking error code", "code", err)
+		log.Warn("Staking error code", "method.Name", method.Name, "err", err)
 		err = ErrExecutionReverted
 	}
 
