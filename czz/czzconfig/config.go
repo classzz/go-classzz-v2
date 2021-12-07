@@ -172,6 +172,8 @@ type Config struct {
 	BscClient     []string `toml:",omitempty"`
 	OecClient     []string `toml:",omitempty"`
 	PolygonClient []string `toml:",omitempty"`
+	MetisClient   []string `toml:",omitempty"`
+	GateClient    []string `toml:",omitempty"`
 
 	// Mining options
 	Miner miner.Config

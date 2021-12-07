@@ -40,6 +40,8 @@ const (
 	ExpandedTxConvert_BCzz
 	ExpandedTxConvert_OCzz
 	ExpandedTxConvert_PCzz
+	ExpandedTxConvert_MCzz
+	ExpandedTxConvert_GCzz
 )
 
 var (
@@ -60,6 +62,8 @@ var (
 		ExpandedTxConvert_BCzz: common.BytesToAddress([]byte{103}),
 		ExpandedTxConvert_OCzz: common.BytesToAddress([]byte{104}),
 		ExpandedTxConvert_PCzz: common.BytesToAddress([]byte{105}),
+		ExpandedTxConvert_MCzz: common.BytesToAddress([]byte{106}),
+		ExpandedTxConvert_GCzz: common.BytesToAddress([]byte{107}),
 	}
 
 	ethPoolAddr     = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
@@ -67,6 +71,8 @@ var (
 	bscPoolAddr     = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|"
 	oecPoolAddr     = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
 	polygonPoolAddr = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
+	metisPoolAddr   = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
+	gatePoolAddr    = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
 	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
@@ -411,6 +417,24 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 			}
 			break
 		}
+	case ExpandedTxConvert_MCzz:
+		for _, client := range evm.chainConfig.MetisClient {
+			if item, err = verifyConvertEthereumTypeTx("Metis", evm, client, AssetType, TxHash); err == ErrRpcErr {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			break
+		}
+	case ExpandedTxConvert_GCzz:
+		for _, client := range evm.chainConfig.GateClient {
+			if item, err = verifyConvertEthereumTypeTx("Gate", evm, client, AssetType, TxHash); err == ErrRpcErr {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			break
+		}
 	}
 
 	Amount := new(big.Int).Mul(item.Amount, Int10)
@@ -545,6 +569,24 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	case ExpandedTxConvert_PCzz:
 		for _, client := range evm.chainConfig.PolygonClient {
 			if item, err = verifyConfirmEthereumTypeTx("Polygon", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			break
+		}
+	case ExpandedTxConvert_MCzz:
+		for _, client := range evm.chainConfig.MetisClient {
+			if item, err = verifyConfirmEthereumTypeTx("Metis", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
+				continue
+			} else if err != nil {
+				return nil, err
+			}
+			break
+		}
+	case ExpandedTxConvert_GCzz:
+		for _, client := range evm.chainConfig.GateClient {
+			if item, err = verifyConfirmEthereumTypeTx("Gate", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
 				continue
 			} else if err != nil {
 				return nil, err
@@ -957,6 +999,14 @@ func CheckToAddress(ConvertType uint8, netName string, extTx *types.Transaction)
 		}
 	} else if ConvertType == ExpandedTxConvert_PCzz {
 		if !strings.Contains(strings.ToUpper(polygonPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_MCzz {
+		if !strings.Contains(strings.ToUpper(metisPoolAddr), strings.ToUpper(extTx.To().String())) {
+			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
+		}
+	} else if ConvertType == ExpandedTxConvert_GCzz {
+		if !strings.Contains(strings.ToUpper(gatePoolAddr), strings.ToUpper(extTx.To().String())) {
 			return fmt.Errorf("verifyConvertEthereumTypeTx (%s) [ToAddress: %s] != [%s]", netName, extTx.To().String(), polygonPoolAddr)
 		}
 	}

@@ -154,6 +154,8 @@ type ChainConfig struct {
 	BscClient     []*rpc.Client `json:"bsc_client"`
 	OecClient     []*rpc.Client `json:"oec_client"`
 	PolygonClient []*rpc.Client `json:"polygon_client"`
+	MetisClient   []*rpc.Client `json:"metis_client"`
+	GateClient    []*rpc.Client `json:"gate_client"`
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty"`
