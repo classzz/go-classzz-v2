@@ -103,6 +103,7 @@ func HasRecord(db czzdb.KeyValueReader, atype uint64, hash common.Hash) bool {
 	}
 	return true
 }
+
 func WriteRecord(db czzdb.KeyValueWriter, atype uint64, hash common.Hash) {
 	data, err := rlp.EncodeToBytes(big.NewInt(1))
 	if err != nil {
@@ -112,6 +113,7 @@ func WriteRecord(db czzdb.KeyValueWriter, atype uint64, hash common.Hash) {
 		log.Crit("Failed to store the record", "err", err)
 	}
 }
+
 func DeleteRecord(db czzdb.KeyValueWriter, atype uint64, hash common.Hash) {
 	if err := db.Delete(recordKeyPrefix(atype, hash)); err != nil {
 		log.Crit("Failed to delete the record", "err", err)
