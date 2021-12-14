@@ -71,8 +71,8 @@ var (
 	bscPoolAddr     = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|"
 	oecPoolAddr     = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
 	polygonPoolAddr = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
-	metisPoolAddr   = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
-	gatePoolAddr    = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
+	metisPoolAddr   = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
+	gatePoolAddr    = "0x503C5C292CD5300E4006c447A46DEab216a54fb2|"
 
 	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
 	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
