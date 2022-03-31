@@ -66,17 +66,6 @@ var (
 		ExpandedTxConvert_GCzz: common.BytesToAddress([]byte{107}),
 	}
 
-	ethPoolAddr     = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
-	hecoPoolAddr    = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|"
-	bscPoolAddr     = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|"
-	oecPoolAddr     = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
-	polygonPoolAddr = "0xdf10e0Caa2BBe67f7a1E91A3e6660cC1e34e81B9|"
-	metisPoolAddr   = "0x007c98F9f2c70746a64572E67FBCc41a2b8bba18|"
-	gatePoolAddr    = "0x503C5C292CD5300E4006c447A46DEab216a54fb2|"
-
-	burnTopics = "0xa4bd93d5396d36bd742684adb6dbe69f45c14792170e66134569c1adf91d1fb9"
-	mintTopics = "0xd4b70e0d50bcb13e7654961d68ed7b96f84a2fcc32edde496c210382dc025708"
-
 	ErrRpcErr = errors.New("rpc err")
 )
 
@@ -84,9 +73,6 @@ var (
 var TeWaKaGas = map[string]uint64{
 	"mortgage": 360000,
 	"update":   360000,
-	"convert":  2400000,
-	"confirm":  2400000,
-	"casting":  2400000,
 }
 
 // Staking contract ABI
@@ -116,12 +102,6 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 		ret, err = mortgage(evm, contract, data)
 	case "update":
 		ret, err = update(evm, contract, data)
-	case "convert":
-		ret, err = convert(evm, contract, data)
-	case "confirm":
-		ret, err = confirm(evm, contract, data)
-	case "casting":
-		ret, err = casting(evm, contract, data)
 	default:
 		log.Warn("Staking call fallback function")
 		err = ErrStakingInvalidInput
