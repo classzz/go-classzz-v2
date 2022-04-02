@@ -136,7 +136,7 @@ func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 		return nil, genesisErr
 	}
 
-	if chainConfig, err = core.CommitClient(config.EthClient, config.HecoClient, config.BscClient, config.OecClient, config.PolygonClient, config.MetisClient, config.GateClient, chainConfig); err != nil {
+	if chainConfig, err = core.CommitClient(config.SideClients, chainConfig); err != nil {
 		return nil, err
 	}
 

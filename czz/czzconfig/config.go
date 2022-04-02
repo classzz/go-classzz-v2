@@ -167,13 +167,8 @@ type Config struct {
 	SnapshotCache           int
 	Preimages               bool
 
-	EthClient     []string `toml:",omitempty"`
-	HecoClient    []string `toml:",omitempty"`
-	BscClient     []string `toml:",omitempty"`
-	OecClient     []string `toml:",omitempty"`
-	PolygonClient []string `toml:",omitempty"`
-	MetisClient   []string `toml:",omitempty"`
-	GateClient    []string `toml:",omitempty"`
+	VerifySwitch bool               `toml:",omitempty"`
+	SideClients  map[uint8][]string `toml:",omitempty"`
 
 	// Mining options
 	Miner miner.Config

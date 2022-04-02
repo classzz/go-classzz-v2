@@ -141,12 +141,12 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 	case "casting":
 		ret, err = casting(evm, contract, data)
 	default:
-		log.Warn("Staking call fallback function")
+		log.Debug("Staking call fallback function")
 		err = ErrStakingInvalidInput
 	}
 
 	if err != nil {
-		log.Warn("Staking error code", "method.Name", method.Name, "err", err)
+		log.Debug("Staking error code", "method.Name", method.Name, "err", err)
 		err = ErrExecutionReverted
 	}
 
@@ -397,70 +397,13 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, ErrTxhashAlreadyInput
 	}
 
-	switch AssetType {
-	case ExpandedTxConvert_ECzz:
-		for _, client := range evm.chainConfig.EthClient {
-			if item, err = verifyConvertEthereumTypeTx("ETH", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
+	for _, client := range evm.chainConfig.SideClients[AssetType] {
+		if item, err = verifyConvertEthereumTypeTx("Side", evm, client, AssetType, TxHash); err == ErrRpcErr {
+			continue
+		} else if err != nil {
+			return nil, err
 		}
-	case ExpandedTxConvert_HCzz:
-		for _, client := range evm.chainConfig.HecoClient {
-			if item, err = verifyConvertEthereumTypeTx("HECO", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_BCzz:
-		for _, client := range evm.chainConfig.BscClient {
-			if item, err = verifyConvertEthereumTypeTx("BSC", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_OCzz:
-		for _, client := range evm.chainConfig.OecClient {
-			if item, err = verifyConvertEthereumTypeTx("OEC", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_PCzz:
-		for _, client := range evm.chainConfig.PolygonClient {
-			if item, err = verifyConvertEthereumTypeTx("Polygon", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_MCzz:
-		for _, client := range evm.chainConfig.MetisClient {
-			if item, err = verifyConvertEthereumTypeTx("Metis", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_GCzz:
-		for _, client := range evm.chainConfig.GateClient {
-			if item, err = verifyConvertEthereumTypeTx("Gate", evm, client, AssetType, TxHash); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
+		break
 	}
 
 	Amount := new(big.Int).Mul(item.Amount, Int10)
@@ -555,70 +498,13 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	isCip2 := evm.chainConfig.IsCIP2(evm.Context.BlockNumber)
 
-	switch ConvertType {
-	case ExpandedTxConvert_ECzz:
-		for _, client := range evm.chainConfig.EthClient {
-			if item, err = verifyConfirmEthereumTypeTx("ETH", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
+	for _, client := range evm.chainConfig.SideClients[ConvertType] {
+		if item, err = verifyConfirmEthereumTypeTx("Side", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
+			continue
+		} else if err != nil {
+			return nil, err
 		}
-	case ExpandedTxConvert_HCzz:
-		for _, client := range evm.chainConfig.HecoClient {
-			if item, err = verifyConfirmEthereumTypeTx("HECO", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_BCzz:
-		for _, client := range evm.chainConfig.BscClient {
-			if item, err = verifyConfirmEthereumTypeTx("BSC", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_OCzz:
-		for _, client := range evm.chainConfig.OecClient {
-			if item, err = verifyConfirmEthereumTypeTx("OEC", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_PCzz:
-		for _, client := range evm.chainConfig.PolygonClient {
-			if item, err = verifyConfirmEthereumTypeTx("Polygon", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_MCzz:
-		for _, client := range evm.chainConfig.MetisClient {
-			if item, err = verifyConfirmEthereumTypeTx("Metis", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
-	case ExpandedTxConvert_GCzz:
-		for _, client := range evm.chainConfig.GateClient {
-			if item, err = verifyConfirmEthereumTypeTx("Gate", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-				continue
-			} else if err != nil {
-				return nil, err
-			}
-			break
-		}
+		break
 	}
 
 	t2 := time.Now()
@@ -902,8 +788,6 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 	//if TxHash == common.HexToHash("0xd7be4f6be5b3d18206ab568956488a2bedf99202cec92a0d377f4d30e333d3e0") {
 	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
 	//}
-
-	fmt.Println(receipt.TxHash, "receipt=========")
 
 	if receipt == nil {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)

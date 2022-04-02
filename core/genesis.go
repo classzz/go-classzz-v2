@@ -691,146 +691,25 @@ func decodePrealloc(data string) GenesisAlloc {
 	return ga
 }
 
-func CommitClient(EthClient, HecoClient, BscClient, OecClient, PolygonClient, MetisClient, GateClient []string, param *params.ChainConfig) (*params.ChainConfig, error) {
+func CommitClient(sideClients map[uint8][]string, param *params.ChainConfig) (*params.ChainConfig, error) {
 
-	for _, v := range EthClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
+	for k, v := range sideClients {
+		clients := []*rpc.Client{}
+		for _, v1 := range v {
+			client, err := rpc.Dial(v1)
+			if err != nil {
+				log.Warn("rpc failed", "url", v, "err", err)
+				return nil, err
+			}
+			var number hexutil.Uint64
+			if err := client.Call(&number, "eth_blockNumber"); err != nil {
+				log.Warn("rpc failed", "url", v, "err", err)
+				return nil, err
+			}
+			log.Info("rpc success", "url", v, "block", int64(number))
+			clients = append(clients, client)
 		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("eth rpc success", "url", v, "block", int64(number))
-		param.EthClient = append(param.EthClient, client)
-	}
-
-	for _, v := range HecoClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("heco rpc success", "url", v, "block", int64(number))
-		param.HecoClient = append(param.HecoClient, client)
-	}
-
-	for _, v := range BscClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("bsc rpc success", "url", v, "block", int64(number))
-		param.BscClient = append(param.BscClient, client)
-	}
-
-	for _, v := range OecClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("oec rpc success", "url", v, "block", int64(number))
-		param.OecClient = append(param.OecClient, client)
-	}
-
-	for _, v := range PolygonClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("Polygon rpc success", "url", v, "block", int64(number))
-		param.PolygonClient = append(param.PolygonClient, client)
-	}
-
-	for _, v := range MetisClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("Metis rpc success", "url", v, "block", int64(number))
-		param.MetisClient = append(param.MetisClient, client)
-	}
-
-	for _, v := range GateClient {
-
-		if v[:4] != "http" {
-			v = "http://" + v
-		}
-		client, err := rpc.Dial(v)
-		if err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-
-		var number hexutil.Uint64
-		if err := client.Call(&number, "eth_blockNumber"); err != nil {
-			log.Warn("rpc failed", "url", v, "err", err)
-			return nil, err
-		}
-		log.Info("Gate rpc success", "url", v, "block", int64(number))
-		param.GateClient = append(param.GateClient, client)
+		param.SideClients[k] = clients
 	}
 
 	return param, nil

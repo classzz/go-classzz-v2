@@ -47,11 +47,13 @@ var CheckpointOracles = map[common.Hash]*CheckpointOracleConfig{
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
-		ChainID: big.NewInt(61),
-		Ethash:  new(EthashConfig),
-		CIP_1:   big.NewInt(150_000),
-		CIP_2:   big.NewInt(170_000),
-		CIP_3:   big.NewInt(220_000),
+		ChainID:      big.NewInt(61),
+		Ethash:       new(EthashConfig),
+		CIP_1:        big.NewInt(150_000),
+		CIP_2:        big.NewInt(170_000),
+		CIP_3:        big.NewInt(220_000),
+		VerifySwitch: false,
+		SideClients:  map[uint8][]*rpc.Client{},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -150,13 +152,8 @@ type ChainConfig struct {
 	CIP_3 *big.Int `json:"CIP_3,omitempty"` //
 	CIP_4 *big.Int `json:"CIP_4,omitempty"` //
 
-	EthClient     []*rpc.Client `json:"eth_client"`
-	HecoClient    []*rpc.Client `json:"heco_client"`
-	BscClient     []*rpc.Client `json:"bsc_client"`
-	OecClient     []*rpc.Client `json:"oec_client"`
-	PolygonClient []*rpc.Client `json:"polygon_client"`
-	MetisClient   []*rpc.Client `json:"metis_client"`
-	GateClient    []*rpc.Client `json:"gate_client"`
+	VerifySwitch bool                    `json:"verify_switch"`
+	SideClients  map[uint8][]*rpc.Client `json:"side_clients"`
 
 	// Various consensus engines
 	Ethash *EthashConfig `json:"ethash,omitempty"`
