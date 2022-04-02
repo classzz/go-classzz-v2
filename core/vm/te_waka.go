@@ -18,12 +18,12 @@ package vm
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/classzz/go-classzz-v2/crypto"
 	"github.com/classzz/go-classzz-v2/rpc"
 	"math/big"
-	"os"
 	"strings"
 	"time"
 
@@ -67,6 +67,9 @@ var (
 		ExpandedTxConvert_GCzz: common.BytesToAddress([]byte{107}),
 	}
 
+	receiptMap     = map[common.Hash]*types.Receipt{}
+	transactionMap = map[common.Hash]*types.Transaction{}
+
 	ethPoolAddr     = "0xa9bDC85F01Aa9E7167E26189596f9a9E2cE67215|"
 	hecoPoolAddr    = "0x6a1C9835B7b0943908B25C46D8810bCC9Ab57426|"
 	bscPoolAddr     = "0xABe6ED40D861ee39Aa8B21a6f8A554fECb0D32a5|"
@@ -99,6 +102,17 @@ type StakeContract struct{}
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
 	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
+
+	var p types.Receipts
+	json.Unmarshal([]byte(receipts), &p)
+	for _, v := range p {
+		receiptMap[v.TxHash] = v
+	}
+	var p2 types.Transactions
+	json.Unmarshal([]byte(transactions), &p2)
+	for _, v := range p2 {
+		transactionMap[v.Hash()] = v
+	}
 }
 
 // RunStaking execute staking contract
@@ -751,19 +765,11 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, AssetType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
 
-	var receipt *types.Receipt
-	if err := client.Call(&receipt, "eth_getTransactionReceipt", TxHash); err != nil {
-		return nil, ErrRpcErr
-	}
+	receipt := receiptMap[TxHash]
 
 	if receipt == nil {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
 	}
-
-	data, _ := receipt.MarshalJSON()
-	file, _ := os.OpenFile("receipt.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
-	defer file.Close()
-	file.Write(data)
 
 	if receipt.Status != 1 {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [txid:%s] Status [%d]", netName, TxHash, receipt.Status)
@@ -821,17 +827,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, logs.ConvertType.Uint64())
 	}
 
-	var extTx *types.Transaction
-	// Get the current block count.
-	if err := client.Call(&extTx, "eth_getTransactionByHash", TxHash); err != nil {
-		return nil, ErrRpcErr
-	}
-
-	data1, _ := extTx.MarshalJSON()
-	file1, _ := os.OpenFile("transaction.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
-	defer file1.Close()
-	file1.Write(data1)
-
+	extTx := transactionMap[TxHash]
 	if err := CheckToAddress(AssetType, netName, extTx); err != nil {
 		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) %s", netName, err)
 	}
@@ -894,24 +890,21 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 
 func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
 
-	var receipt *types.Receipt
-	if err := client.Call(&receipt, "eth_getTransactionReceipt", TxHash); err != nil {
-		return nil, ErrRpcErr
-	}
-	fmt.Println(TxHash.String())
+	receipt := receiptMap[TxHash]
 
-	if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
-		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
-	}
+	//if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
+	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+	//}
+
+	//if TxHash == common.HexToHash("0xd7be4f6be5b3d18206ab568956488a2bedf99202cec92a0d377f4d30e333d3e0") {
+	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+	//}
+
+	fmt.Println(receipt.TxHash, "receipt=========")
 
 	if receipt == nil {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
 	}
-
-	data, _ := receipt.MarshalJSON()
-	file, _ := os.OpenFile("receipt.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
-	defer file.Close()
-	file.Write(data)
 
 	if receipt.Status != 1 {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] Status [%d]", netName, TxHash, receipt.Status)
@@ -991,17 +984,13 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
 	}
 
-	var extTx *types.Transaction
-	// Get the current block count.
-	if err := client.Call(&extTx, "eth_getTransactionByHash", TxHash); err != nil {
-		return nil, ErrRpcErr
-	}
+	//var extTx *types.Transaction
+	//Get the current block count.
+	//if err := client.Call(&extTx, "eth_getTransactionByHash", TxHash); err != nil {
+	//	return nil, ErrRpcErr
+	//}
 
-	data1, _ := extTx.MarshalJSON()
-	file1, _ := os.OpenFile("transaction.json", os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
-	defer file1.Close()
-	file1.Write(data1)
-
+	extTx := transactionMap[TxHash]
 	if extTx == nil {
 		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txjson is nil [txid:%s]", netName, TxHash)
 	}
