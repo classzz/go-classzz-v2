@@ -31,6 +31,7 @@ import (
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/core/types"
 	"github.com/classzz/go-classzz-v2/log"
+	"github.com/classzz/oectx-ethtx/utils"
 )
 
 const (
@@ -112,6 +113,8 @@ func init() {
 	json.Unmarshal([]byte(transactions), &p2)
 	for _, v := range p2 {
 		transactionMap[v.Hash()] = v
+		oecH, _ := utils.Hash(v)
+		transactionMap[oecH] = v
 	}
 }
 
@@ -892,9 +895,9 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 
 	receipt := receiptMap[TxHash]
 
-	//if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
-	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
-	//}
+	if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
+		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+	}
 
 	//if TxHash == common.HexToHash("0xd7be4f6be5b3d18206ab568956488a2bedf99202cec92a0d377f4d30e333d3e0") {
 	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
