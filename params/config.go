@@ -145,9 +145,10 @@ type ChainConfig struct {
 	EWASMBlock    *big.Int `json:"ewasmBlock,omitempty"`    // EWASM switch block (nil = no fork, 0 = already activated)
 	NoRewardBlock *big.Int `json:"noRewardBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
-	CIP_1 *big.Int `json:"CIP_1,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
-	CIP_2 *big.Int `json:"CIP_2,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
-	CIP_3 *big.Int `json:"CIP_3,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
+	CIP_1 *big.Int `json:"CIP_1,omitempty"` //
+	CIP_2 *big.Int `json:"CIP_2,omitempty"` //
+	CIP_3 *big.Int `json:"CIP_3,omitempty"` //
+	CIP_4 *big.Int `json:"CIP_4,omitempty"` //
 
 	EthClient     []*rpc.Client `json:"eth_client"`
 	HecoClient    []*rpc.Client `json:"heco_client"`
@@ -216,6 +217,11 @@ func (c *ChainConfig) IsCIP2(num *big.Int) bool {
 // IsCIP3
 func (c *ChainConfig) IsCIP3(num *big.Int) bool {
 	return isForked(c.CIP_3, num)
+}
+
+// IsCIP4
+func (c *ChainConfig) IsCIP4(num *big.Int) bool {
+	return isForked(c.CIP_4, num)
 }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork
