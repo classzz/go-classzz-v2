@@ -345,6 +345,34 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 	// Accumulate any block and uncle rewards and commit the final state root
 	accumulateRewards(chain.Config(), state, header)
 	consensus.OnceInitImpawnState(chain.Config(), state)
+
+	if chain.Config().IsCIP4(header.Number) {
+		pool1 := state.GetBalance(common.BytesToAddress([]byte{101}))
+		state.SubBalance(common.BytesToAddress([]byte{101}), pool1)
+		pool2 := state.GetBalance(common.BytesToAddress([]byte{102}))
+		state.SubBalance(common.BytesToAddress([]byte{102}), pool2)
+		pool3 := state.GetBalance(common.BytesToAddress([]byte{103}))
+		state.SubBalance(common.BytesToAddress([]byte{103}), pool3)
+		pool4 := state.GetBalance(common.BytesToAddress([]byte{104}))
+		state.SubBalance(common.BytesToAddress([]byte{104}), pool4)
+		pool5 := state.GetBalance(common.BytesToAddress([]byte{105}))
+		state.SubBalance(common.BytesToAddress([]byte{105}), pool5)
+		pool6 := state.GetBalance(common.BytesToAddress([]byte{106}))
+		state.SubBalance(common.BytesToAddress([]byte{106}), pool6)
+		pool7 := state.GetBalance(common.BytesToAddress([]byte{107}))
+		state.SubBalance(common.BytesToAddress([]byte{107}), pool7)
+
+		pool_count := big.NewInt(0).Add(pool1, pool2)
+		pool_count = big.NewInt(0).Add(pool_count, pool3)
+		pool_count = big.NewInt(0).Add(pool_count, pool4)
+		pool_count = big.NewInt(0).Add(pool_count, pool5)
+		pool_count = big.NewInt(0).Add(pool_count, pool6)
+		pool_count = big.NewInt(0).Add(pool_count, pool7)
+
+		state.AddBalance(common.HexToAddress("0x1111111111111111111111111111"), pool_count)
+
+	}
+
 	vm.ShiftItems(state, header.Number.Uint64())
 	header.Root = state.IntermediateRoot(true)
 }

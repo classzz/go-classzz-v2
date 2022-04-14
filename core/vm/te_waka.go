@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/classzz/go-classzz-v2/crypto"
-	"github.com/classzz/go-classzz-v2/rpc"
 	"math/big"
 	"strings"
 	"time"
@@ -356,14 +355,6 @@ func update(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) 
 	return nil, nil
 }
 
-func crossBurn() {
-
-}
-
-func crossMint() {
-
-}
-
 // Convert
 func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	t0 := time.Now()
@@ -397,13 +388,8 @@ func convert(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 		return nil, ErrTxhashAlreadyInput
 	}
 
-	for _, client := range evm.chainConfig.SideClients[AssetType] {
-		if item, err = verifyConvertEthereumTypeTx("Side", evm, client, AssetType, TxHash); err == ErrRpcErr {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-		break
+	if item, err = verifyConvertEthereumTypeTx("Side", evm, AssetType, TxHash); err == ErrRpcErr {
+		return nil, err
 	}
 
 	Amount := new(big.Int).Mul(item.Amount, Int10)
@@ -498,13 +484,8 @@ func confirm(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 
 	isCip2 := evm.chainConfig.IsCIP2(evm.Context.BlockNumber)
 
-	for _, client := range evm.chainConfig.SideClients[ConvertType] {
-		if item, err = verifyConfirmEthereumTypeTx("Side", client, tewaka, ConvertType, TxHash, isCip2); err == ErrRpcErr {
-			continue
-		} else if err != nil {
-			return nil, err
-		}
-		break
+	if item, err = verifyConfirmEthereumTypeTx("Side", tewaka, ConvertType, TxHash, isCip2); err != nil {
+		return nil, err
 	}
 
 	t2 := time.Now()
@@ -652,7 +633,7 @@ func casting(evm *EVM, contract *Contract, input []byte) (ret []byte, err error)
 	return nil, nil
 }
 
-func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, AssetType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
+func verifyConvertEthereumTypeTx(netName string, evm *EVM, AssetType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
 
 	receipt := receiptMap[TxHash]
 
@@ -777,7 +758,7 @@ func verifyConvertEthereumTypeTx(netName string, evm *EVM, client *rpc.Client, A
 	return item, nil
 }
 
-func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
+func verifyConfirmEthereumTypeTx(netName string, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
 
 	receipt := receiptMap[TxHash]
 
@@ -888,6 +869,259 @@ func verifyConfirmEthereumTypeTx(netName string, client *rpc.Client, tewaka *TeW
 
 	return item, nil
 }
+
+func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
+	args := struct {
+		StakingAmount   *big.Int
+		CoinBaseAddress []common.Address
+	}{}
+
+	evm.DelegateCall()
+
+	return nil, err
+}
+
+func crossToMainChain(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
+
+	return nil, err
+}
+
+//func verifyConvertEthereumTypeTxV3(netName string, evm *EVM, AssetType uint8, TxHash common.Hash) (*types.ConvertItem, error) {
+//
+//	receipt := receiptMap[TxHash]
+//
+//	if receipt == nil {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+//	}
+//
+//	if receipt.Status != 1 {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) [txid:%s] Status [%d]", netName, TxHash, receipt.Status)
+//	}
+//
+//	if len(receipt.Logs) < 1 {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  receipt Logs length is 0 ", netName)
+//	}
+//
+//	var txLog *types.Log
+//	for _, log := range receipt.Logs {
+//		if log.Topics[0].String() == burnTopics {
+//			txLog = log
+//			break
+//		}
+//	}
+//
+//	if txLog == nil {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) txLog is nil ", netName)
+//	}
+//
+//	logs := struct {
+//		From         common.Address
+//		AmountIn     *big.Int
+//		AmountOut    *big.Int
+//		ConvertType  *big.Int
+//		ToPath       []common.Address
+//		ToRouterAddr common.Address
+//		Slippage     *big.Int
+//		IsInsurance  bool
+//		Extra        []byte
+//	}{}
+//
+//	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
+//	}
+//
+//	amountPool := evm.StateDB.GetBalance(CoinPools[AssetType])
+//
+//	Amount := logs.AmountOut
+//	if logs.AmountOut.Cmp(big.NewInt(0)) == 0 {
+//		Amount = logs.AmountIn
+//	}
+//
+//	TxAmount := new(big.Int).Mul(Amount, Int10)
+//	if TxAmount.Cmp(amountPool) > 0 {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) tx amount [%d] > pool [%d]", netName, TxAmount.Uint64(), amountPool)
+//	}
+//
+//	if _, ok := CoinPools[uint8(logs.ConvertType.Uint64())]; !ok && uint8(logs.ConvertType.Uint64()) != 0 {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ConvertType is [%d] CoinPools not find", netName, logs.ConvertType.Uint64())
+//	}
+//
+//	if AssetType == uint8(logs.ConvertType.Uint64()) {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) AssetType = ConvertType = [%d]", netName, logs.ConvertType.Uint64())
+//	}
+//
+//	extTx := transactionMap[TxHash]
+//	if err := CheckToAddress(AssetType, netName, extTx); err != nil {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) %s", netName, err)
+//	}
+//
+//	Vb, R, S := extTx.RawSignatureValues()
+//
+//	var plainV byte
+//	if isProtectedV(Vb) {
+//		chainID := deriveChainId(Vb).Uint64()
+//		plainV = byte(Vb.Uint64() - 35 - 2*chainID)
+//	} else {
+//		// If the signature is not optionally protected, we assume it
+//		// must already be equal to the recovery id.
+//		plainV = byte(Vb.Uint64())
+//	}
+//
+//	if !crypto.ValidateSignatureValues(plainV, R, S, false) {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) ValidateSignatureValues invalid transaction v, r, s values", netName)
+//	}
+//
+//	// encode the signature in uncompressed format
+//	r, s := R.Bytes(), S.Bytes()
+//	sig := make([]byte, crypto.SignatureLength)
+//	copy(sig[32-len(r):32], r)
+//	copy(sig[64-len(s):64], s)
+//	sig[64] = plainV
+//
+//	var pk []byte
+//	var err error
+//	if extTx.Type() == types.LegacyTxType {
+//		a := types.NewEIP155Signer(extTx.ChainId())
+//		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+//	} else if extTx.Type() == types.DynamicFeeTxType {
+//		a := types.NewLondonSigner(extTx.ChainId())
+//		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+//	} else {
+//		a := types.NewEIP2930Signer(extTx.ChainId())
+//		pk, err = crypto.Ecrecover(a.Hash(extTx).Bytes(), sig)
+//	}
+//
+//	if err != nil {
+//		return nil, fmt.Errorf("verifyConvertEthereumTypeTx (%s) Ecrecover err: %s", netName, err)
+//	}
+//
+//	item := &types.ConvertItem{
+//		AssetType:   AssetType,
+//		ConvertType: uint8(logs.ConvertType.Uint64()),
+//		TxHash:      TxHash,
+//		PubKey:      pk,
+//		Amount:      Amount,
+//		Path:        logs.ToPath,
+//		RouterAddr:  logs.ToRouterAddr,
+//		IsInsurance: logs.IsInsurance,
+//		Slippage:    logs.Slippage,
+//		Extra:       logs.Extra,
+//	}
+//
+//	return item, nil
+//}
+//
+//func verifyConfirmEthereumTypeTxV3(netName string, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
+//
+//	receipt := receiptMap[TxHash]
+//
+//	if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+//	}
+//
+//	//if TxHash == common.HexToHash("0xd7be4f6be5b3d18206ab568956488a2bedf99202cec92a0d377f4d30e333d3e0") {
+//	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+//	//}
+//
+//	if receipt == nil {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
+//	}
+//
+//	if receipt.Status != 1 {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] Status [%d]", netName, TxHash, receipt.Status)
+//	}
+//
+//	if len(receipt.Logs) < 1 {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  receipt Logs length is 0 ", netName)
+//	}
+//
+//	var txLog *types.Log
+//	for _, log := range receipt.Logs {
+//		if log.Topics[0].String() == mintTopics {
+//			txLog = log
+//			break
+//		}
+//	}
+//
+//	if txLog == nil {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txLog is nil ", netName)
+//	}
+//
+//	logs := struct {
+//		To        common.Address
+//		Mid       *big.Int
+//		Gas       *big.Int
+//		AmountIn  *big.Int
+//		AmountOut *big.Int
+//	}{}
+//
+//	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "MintToken", txLog.Data); err != nil {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
+//	}
+//
+//	var item *types.ConvertItem
+//	for _, v := range tewaka.ConvertItems {
+//		if v.ID.Cmp(logs.Mid) == 0 {
+//			item = v
+//			break
+//		}
+//	}
+//
+//	if item == nil {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) ConvertItems [id:%d] is null", netName, logs.Mid.Uint64())
+//	}
+//
+//	if item.ConvertType != ConvertType {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) ConvertType is [%d] not [%d] ", netName, ConvertType, item.ConvertType)
+//	}
+//
+//	if isCip2 {
+//		if len(item.PubKey) > 0 {
+//			toaddresspuk, err := crypto.DecompressPubkey(item.PubKey)
+//			if err != nil || toaddresspuk == nil {
+//				toaddresspuk, err = crypto.UnmarshalPubkey(item.PubKey)
+//				if err != nil || toaddresspuk == nil {
+//					return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) toaddresspuk [puk:%s] is err: %s", netName, hex.EncodeToString(item.PubKey), err)
+//				}
+//			}
+//			toaddress := crypto.PubkeyToAddress(*toaddresspuk)
+//			if logs.To.String() != toaddress.String() {
+//				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), toaddress.String())
+//			}
+//		} else {
+//			fromAddr := common.BytesToAddress(item.Extra)
+//			if logs.To.String() != fromAddr.String() {
+//				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), fromAddr.String())
+//			}
+//		}
+//	}
+//
+//	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
+//	if item.AssetType == ExpandedTxConvert_Czz {
+//		amount2 = new(big.Int).Div(amount2, Int10)
+//	}
+//
+//	if logs.AmountIn.Cmp(amount2) != 0 {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
+//	}
+//
+//	//var extTx *types.Transaction
+//	//Get the current block count.
+//	//if err := client.Call(&extTx, "eth_getTransactionByHash", TxHash); err != nil {
+//	//	return nil, ErrRpcErr
+//	//}
+//
+//	extTx := transactionMap[TxHash]
+//	if extTx == nil {
+//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txjson is nil [txid:%s]", netName, TxHash)
+//	}
+//
+//	if err := CheckToAddress(ConvertType, netName, extTx); err != nil {
+//		return nil, err
+//	}
+//
+//	return item, nil
+//}
 
 func CheckToAddress(ConvertType uint8, netName string, extTx *types.Transaction) error {
 	// toaddress
