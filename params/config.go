@@ -64,10 +64,13 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Testnet test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID: big.NewInt(62),
-		CIP_1:   big.NewInt(0),
-		CIP_2:   big.NewInt(0),
-		CIP_3:   big.NewInt(0),
+		ChainID:      big.NewInt(62),
+		CIP_1:        big.NewInt(0),
+		CIP_2:        big.NewInt(0),
+		CIP_3:        big.NewInt(0),
+		CIP_4:        big.NewInt(100),
+		VerifySwitch: false,
+		SideClients:  map[uint8][]*rpc.Client{},
 	}
 
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced

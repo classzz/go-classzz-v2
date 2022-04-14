@@ -95,12 +95,14 @@ var TeWaKaGas = map[string]uint64{
 
 // Staking contract ABI
 var AbiTeWaKa abi.ABI
+var AbiTest abi.ABI
 var AbiCzzRouter abi.ABI
 
 type StakeContract struct{}
 
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
+	AbiTest, _ = abi.JSON(strings.NewReader(TestABI))
 	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
 
 	var p types.Receipts
@@ -139,6 +141,8 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 		ret, err = confirm(evm, contract, data)
 	case "casting":
 		ret, err = casting(evm, contract, data)
+	case "add":
+		ret, err = crossToMainChainMap(evm, contract, data)
 	default:
 		log.Debug("Staking call fallback function")
 		err = ErrStakingInvalidInput
@@ -872,11 +876,18 @@ func verifyConfirmEthereumTypeTx(netName string, tewaka *TeWakaImpl, ConvertType
 
 func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
 	args := struct {
-		StakingAmount   *big.Int
-		CoinBaseAddress []common.Address
+		Num *big.Int
 	}{}
 
-	evm.DelegateCall()
+	method, _ := AbiTeWaKa.Methods["add"]
+	err = method.Inputs.UnpackAtomic(&args, input)
+	if err != nil {
+		log.Error("Unpack convert pubkey error", "err", err)
+		return nil, ErrStakingInvalidInput
+	}
+
+	pinput := packInput("add", args.Num)
+	_, _, err = evm.DelegateCall(AccountRef(common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512")), common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"), pinput, 10000000)
 
 	return nil, err
 }
@@ -1179,8 +1190,57 @@ func deriveChainId(v *big.Int) *big.Int {
 	return v.Div(v, big.NewInt(2))
 }
 
+func packInput(abiMethod string, params ...interface{}) []byte {
+	input, err := AbiTest.Pack(abiMethod, params...)
+	if err != nil {
+		log.Error("packInput", "err", err)
+	}
+	return input
+}
+
+const TestABI = `[
+    {
+      "inputs": [],
+      "name": "Num",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "num",
+          "type": "uint256"
+        }
+      ],
+      "name": "add",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ]`
+
 const TeWakaABI = `
 [
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "num",
+				"type": "uint256"
+			}
+		],
+		"name": "add",
+		"outputs": [],
+		"type": "function"
+	},
     {
         "name":"mortgage",
         "inputs":[
