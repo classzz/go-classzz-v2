@@ -885,9 +885,13 @@ func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte
 		log.Error("Unpack convert pubkey error", "err", err)
 		return nil, ErrStakingInvalidInput
 	}
+	from := contract.caller.Address()
+	contractN := NewContract(AccountRef(from), AccountRef(from), big.NewInt(0), 100000)
 
+	addrCopy := common.HexToAddress("0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0")
 	pinput := packInput("add", args.Num)
-	_, _, err = evm.DelegateCall(AccountRef(common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512")), common.HexToAddress("0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"), pinput, 10000000)
+
+	_, _, err = evm.Call(contractN, addrCopy, pinput, 100000, big.NewInt(0))
 
 	return nil, err
 }
