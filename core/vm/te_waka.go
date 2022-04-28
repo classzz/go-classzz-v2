@@ -141,8 +141,10 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 		ret, err = confirm(evm, contract, data)
 	case "casting":
 		ret, err = casting(evm, contract, data)
-	case "add":
+	case "crossToMainChainMap":
 		ret, err = crossToMainChainMap(evm, contract, data)
+	case "betweenSideChainCrossMap":
+		ret, err = betweenSideChainCrossMap(evm, contract, data)
 	default:
 		log.Debug("Staking call fallback function")
 		err = ErrStakingInvalidInput
@@ -896,7 +898,24 @@ func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte
 	return nil, err
 }
 
-func crossToMainChain(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
+func betweenSideChainCrossMap(evm *EVM, contract *Contract, input []byte) (ret []byte, err error) {
+	args := struct {
+		Num *big.Int
+	}{}
+
+	method, _ := AbiTeWaKa.Methods["add"]
+	err = method.Inputs.UnpackAtomic(&args, input)
+	if err != nil {
+		log.Error("Unpack convert pubkey error", "err", err)
+		return nil, ErrStakingInvalidInput
+	}
+	from := contract.caller.Address()
+	contractN := NewContract(AccountRef(from), AccountRef(from), big.NewInt(0), 100000)
+
+	addrCopy := common.HexToAddress("0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0")
+	pinput := packInput("add", args.Num)
+
+	_, _, err = evm.Call(contractN, addrCopy, pinput, 100000, big.NewInt(0))
 
 	return nil, err
 }
