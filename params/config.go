@@ -52,6 +52,7 @@ var (
 		CIP_1:        big.NewInt(150_000),
 		CIP_2:        big.NewInt(170_000),
 		CIP_3:        big.NewInt(220_000),
+		CIP_4:        big.NewInt(950_000),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
@@ -64,7 +65,7 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Testnet test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:      big.NewInt(62),
+		ChainID:      big.NewInt(2020),
 		CIP_1:        big.NewInt(0),
 		CIP_2:        big.NewInt(0),
 		CIP_3:        big.NewInt(0),
@@ -197,6 +198,14 @@ func (c *ChainConfig) String() string {
 		c.ChainID,
 		engine,
 	)
+}
+
+// ChainID
+func (c *ChainConfig) ChainId(num *big.Int) *big.Int {
+	if c.IsCIP4(num) {
+		return big.NewInt(2019)
+	}
+	return big.NewInt(61)
 }
 
 // IsNoReward returns whether num is either equal to the Merge fork block or greater.
