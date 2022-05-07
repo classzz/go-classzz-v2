@@ -235,6 +235,7 @@ type TxPool struct {
 	//eip2718  bool // Fork indicator whether we are using EIP-2718 type transactions.
 	//eip1559  bool // Fork indicator whether we are using EIP-1559 type transactions.
 	cip1 bool
+	cip4 bool
 
 	currentState  *state.StateDB // Current state in the blockchain head
 	pendingNonces *txNoncer      // Pending state tracking virtual nonces
@@ -578,6 +579,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	//if !pool.eip1559 && tx.Type() == types.DynamicFeeTxType {
 	//	return ErrTxTypeNotSupported
 	//}
+
+	if pool.cip4 {
+		pool.signer = types.LatestSigner(pool.chainconfig)
+	}
 	// Reject transactions over defined size to prevent DOS attacks
 	if uint64(tx.Size()) > txMaxSize {
 		return ErrOversizedData
@@ -877,6 +882,10 @@ func (pool *TxPool) addTxs(txs []*types.Transaction, local, sync bool) []error {
 		// Exclude transactions with invalid signatures as soon as
 		// possible and cache senders in transactions before
 		// obtaining lock
+		if pool.cip4 {
+			pool.signer = types.LatestSigner(pool.chainconfig)
+		}
+
 		_, err := types.Sender(pool.signer, tx)
 		if err != nil {
 			errs[i] = ErrInvalidSender
@@ -1270,6 +1279,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	// Update all fork indicator by next pending block number.
 	next := new(big.Int).Add(newHead.Number, big.NewInt(1))
 	pool.cip1 = pool.chainconfig.IsCIP1(next)
+	pool.cip4 = pool.chainconfig.IsCIP4(next)
 	//pool.eip2718 = pool.chainconfig.IsBerlin(next)
 	//pool.eip1559 = pool.chainconfig.IsLondon(next)
 }

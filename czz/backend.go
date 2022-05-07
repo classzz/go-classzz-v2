@@ -165,7 +165,7 @@ func New(stack *node.Node, config *czzconfig.Config) (*Classzz, error) {
 	if bcVersion != nil {
 		dbVer = fmt.Sprintf("%d", *bcVersion)
 	}
-	log.Info("Initialising Classzz protocol", "network", config.NetworkId, "dbversion", dbVer)
+	log.Info("Initialising ClassZZ protocol", "network", config.NetworkId, "dbversion", dbVer)
 
 	if !config.SkipBcVersionCheck {
 		if bcVersion != nil && *bcVersion > core.BlockChainVersion {

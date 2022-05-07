@@ -48,6 +48,7 @@ var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
 		ChainID:      big.NewInt(61),
+		ChainIDNew:   big.NewInt(2019),
 		Ethash:       new(EthashConfig),
 		CIP_1:        big.NewInt(150_000),
 		CIP_2:        big.NewInt(170_000),
@@ -65,11 +66,12 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Testnet test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:      big.NewInt(2020),
+		ChainID:      big.NewInt(62),
+		ChainIDNew:   big.NewInt(2020),
 		CIP_1:        big.NewInt(0),
 		CIP_2:        big.NewInt(0),
 		CIP_3:        big.NewInt(0),
-		CIP_4:        big.NewInt(100),
+		CIP_4:        big.NewInt(10),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
@@ -148,6 +150,8 @@ type CheckpointOracleConfig struct {
 type ChainConfig struct {
 	ChainID *big.Int `json:"chainId"` // chainId identifies the current chain and is used for replay protection
 
+	ChainIDNew *big.Int `json:"chainIDNew"` // ChainIDNew identifies the current chain and is used for replay protection
+
 	EWASMBlock    *big.Int `json:"ewasmBlock,omitempty"`    // EWASM switch block (nil = no fork, 0 = already activated)
 	NoRewardBlock *big.Int `json:"noRewardBlock,omitempty"` // Catalyst switch block (nil = no fork, 0 = already on catalyst)
 
@@ -203,9 +207,9 @@ func (c *ChainConfig) String() string {
 // ChainID
 func (c *ChainConfig) ChainId(num *big.Int) *big.Int {
 	if c.IsCIP4(num) {
-		return big.NewInt(2019)
+		return c.ChainIDNew
 	}
-	return big.NewInt(61)
+	return c.ChainID
 }
 
 // IsNoReward returns whether num is either equal to the Merge fork block or greater.
@@ -330,7 +334,7 @@ type Rules struct {
 
 // Rules ensures c's ChainID is not nil.
 func (c *ChainConfig) Rules(num *big.Int) Rules {
-	chainID := c.ChainID
+	chainID := c.ChainId(num)
 	if chainID == nil {
 		chainID = new(big.Int)
 	}

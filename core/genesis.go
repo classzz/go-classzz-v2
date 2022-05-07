@@ -222,6 +222,12 @@ func SetupGenesisBlockWithOverride(db czzdb.Database, genesis *Genesis, override
 	//if err := newcfg.CheckConfigForkOrder(); err != nil {
 	//	return newcfg, common.Hash{}, err
 	//}
+	height := rawdb.ReadHeaderNumber(db, rawdb.ReadHeadHeaderHash(db))
+	if height == nil {
+		return newcfg, stored, fmt.Errorf("missing block number for head header hash")
+	}
+
+	newcfg.ChainID = newcfg.ChainId(big.NewInt(int64(*height)))
 	storedcfg := rawdb.ReadChainConfig(db, stored)
 	if storedcfg == nil {
 		log.Warn("Found genesis block without chain config")
@@ -236,10 +242,7 @@ func SetupGenesisBlockWithOverride(db czzdb.Database, genesis *Genesis, override
 	}
 	// Check config compatibility and write the config. Compatibility errors
 	// are returned to the caller unless we're already at block zero.
-	height := rawdb.ReadHeaderNumber(db, rawdb.ReadHeadHeaderHash(db))
-	if height == nil {
-		return newcfg, stored, fmt.Errorf("missing block number for head header hash")
-	}
+
 	compatErr := storedcfg.CheckCompatible(newcfg, *height)
 	if compatErr != nil && *height != 0 && compatErr.RewindTo != 0 {
 		return newcfg, stored, compatErr
