@@ -53,7 +53,7 @@ var (
 		CIP_1:        big.NewInt(150_000),
 		CIP_2:        big.NewInt(170_000),
 		CIP_3:        big.NewInt(220_000),
-		CIP_4:        big.NewInt(950_000),
+		CIP_4:        big.NewInt(1_000_000),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
@@ -202,6 +202,12 @@ func (c *ChainConfig) String() string {
 		c.ChainID,
 		engine,
 	)
+}
+
+func (c *ChainConfig) ReChainId(num *big.Int) {
+	if c.IsCIP4(num) {
+		c.ChainID = c.ChainIDNew
+	}
 }
 
 // ChainID

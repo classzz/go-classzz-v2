@@ -1451,7 +1451,7 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
-	bc.chainConfig.ChainID = bc.chainConfig.ChainId(block.Number())
+	bc.chainConfig.ReChainId(block.Number())
 	// Calculate the total difficulty of the block
 	ptd := bc.GetTd(block.ParentHash(), block.NumberU64()-1)
 	if ptd == nil {
@@ -1689,7 +1689,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	factors := make([]*big.Int, len(chain))
 
 	for i, block := range chain {
-		bc.chainConfig.ChainID = bc.chainConfig.ChainId(block.Number())
+		bc.chainConfig.ReChainId(block.Number())
 		headers[i] = block.Header()
 		seals[i] = verifySeals
 		amount, _ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
