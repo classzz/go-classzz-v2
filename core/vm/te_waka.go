@@ -97,14 +97,14 @@ var TeWaKaGas = map[string]uint64{
 
 // Staking contract ABI
 var AbiTeWaKa abi.ABI
-var AbiTest abi.ABI
+var AbiTeWakaV3 abi.ABI
 var AbiCzzRouter abi.ABI
 
 type StakeContract struct{}
 
 func init() {
 	AbiTeWaKa, _ = abi.JSON(strings.NewReader(TeWakaABI))
-	AbiTest, _ = abi.JSON(strings.NewReader(TestABI))
+	AbiTeWakaV3, _ = abi.JSON(strings.NewReader(TeWakaV3ABI))
 	AbiCzzRouter, _ = abi.JSON(strings.NewReader(CzzRouterABI))
 
 	var p types.Receipts
@@ -131,6 +131,7 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 	}
 
 	data := input[4:]
+	isCip4 := !evm.chainConfig.IsCIP4(evm.Context.BlockNumber)
 
 	switch method.Name {
 	case "mortgage":
@@ -138,11 +139,23 @@ func RunStaking(evm *EVM, contract *Contract, input []byte) (ret []byte, err err
 	case "update":
 		ret, err = update(evm, contract, data)
 	case "convert":
-		ret, err = convert(evm, contract, data)
+		if isCip4 {
+			ret, err = convert(evm, contract, data)
+		} else {
+			err = errors.New("isCip4 close func")
+		}
 	case "confirm":
-		ret, err = confirm(evm, contract, data)
+		if isCip4 {
+			ret, err = confirm(evm, contract, data)
+		} else {
+			err = errors.New("isCip4 close func")
+		}
 	case "casting":
-		ret, err = casting(evm, contract, data)
+		if isCip4 {
+			ret, err = casting(evm, contract, data)
+		} else {
+			err = errors.New("isCip4 close func")
+		}
 	case "crossToMainChainMap":
 		ret, err = crossToMainChainMap(evm, contract, data)
 	case "betweenSideChainCrossMap":
@@ -877,8 +890,10 @@ func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte
 		tewaka          common.Address
 	}{}
 
-	if err := verifyCrossToMainTxV3(evm, args.amounts, args.burnHash, args.fromNetworkType); err != nil {
-		return nil, err
+	if evm.chainConfig.VerifySwitch {
+		if err := verifyCrossToMainTxV3(evm, args.amounts, args.burnHash, args.fromNetworkType); err != nil {
+			return nil, err
+		}
 	}
 
 	method, _ := AbiTeWaKa.Methods["crossToMainChainMap"]
@@ -887,6 +902,7 @@ func crossToMainChainMap(evm *EVM, contract *Contract, input []byte) (ret []byte
 		log.Error("Unpack convert pubkey error", "err", err)
 		return nil, ErrStakingInvalidInput
 	}
+
 	from := contract.caller.Address()
 	contractN := NewContract(AccountRef(from), AccountRef(from), big.NewInt(0), 100000)
 
@@ -907,8 +923,10 @@ func betweenSideChainCrossMap(evm *EVM, contract *Contract, input []byte) (ret [
 		tewaka          common.Address
 	}{}
 
-	if err := verifyCrossToMainTxV3(evm, args.amounts, args.burnHash, args.fromNetworkType); err != nil {
-		return nil, err
+	if evm.chainConfig.VerifySwitch {
+		if err := verifyCrossToMainTxV3(evm, args.amounts, args.burnHash, args.fromNetworkType); err != nil {
+			return nil, err
+		}
 	}
 
 	method, _ := AbiTeWaKa.Methods["betweenSideChainCrossMap"]
@@ -974,7 +992,7 @@ func verifyCrossToMainTxV3(evm *EVM, amounts *big.Int, burnHash common.Hash, fro
 		ManagerAddress common.Address
 	}{}
 
-	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "BurnToken", txLog.Data); err != nil {
+	if err := AbiTeWaKa.UnpackIntoInterface(&logs, "AtomBurnLog", txLog.Data); err != nil {
 		return fmt.Errorf("verifyConvertEthereumTypeTx (%d)  UnpackIntoInterface err (%s)", fromNetworkType, err)
 	}
 
@@ -996,119 +1014,6 @@ func verifyCrossToMainTxV3(evm *EVM, amounts *big.Int, burnHash common.Hash, fro
 
 	return nil
 }
-
-//
-//func verifyConfirmEthereumTypeTxV3(netName string, tewaka *TeWakaImpl, ConvertType uint8, TxHash common.Hash, isCip2 bool) (*types.ConvertItem, error) {
-//
-//	receipt := receiptMap[TxHash]
-//
-//	if TxHash == common.HexToHash("0xcdde8c184a958fde12c07dadbcd90ca29831b633a371c40a01fdab0511372641") {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
-//	}
-//
-//	//if TxHash == common.HexToHash("0xd7be4f6be5b3d18206ab568956488a2bedf99202cec92a0d377f4d30e333d3e0") {
-//	//	return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
-//	//}
-//
-//	if receipt == nil {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] not find", netName, TxHash)
-//	}
-//
-//	if receipt.Status != 1 {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [txid:%s] Status [%d]", netName, TxHash, receipt.Status)
-//	}
-//
-//	if len(receipt.Logs) < 1 {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  receipt Logs length is 0 ", netName)
-//	}
-//
-//	var txLog *types.Log
-//	for _, log := range receipt.Logs {
-//		if log.Topics[0].String() == mintTopics {
-//			txLog = log
-//			break
-//		}
-//	}
-//
-//	if txLog == nil {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txLog is nil ", netName)
-//	}
-//
-//	logs := struct {
-//		To        common.Address
-//		Mid       *big.Int
-//		Gas       *big.Int
-//		AmountIn  *big.Int
-//		AmountOut *big.Int
-//	}{}
-//
-//	if err := AbiCzzRouter.UnpackIntoInterface(&logs, "MintToken", txLog.Data); err != nil {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s)  UnpackIntoInterface err (%s)", netName, err)
-//	}
-//
-//	var item *types.ConvertItem
-//	for _, v := range tewaka.ConvertItems {
-//		if v.ID.Cmp(logs.Mid) == 0 {
-//			item = v
-//			break
-//		}
-//	}
-//
-//	if item == nil {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) ConvertItems [id:%d] is null", netName, logs.Mid.Uint64())
-//	}
-//
-//	if item.ConvertType != ConvertType {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) ConvertType is [%d] not [%d] ", netName, ConvertType, item.ConvertType)
-//	}
-//
-//	if isCip2 {
-//		if len(item.PubKey) > 0 {
-//			toaddresspuk, err := crypto.DecompressPubkey(item.PubKey)
-//			if err != nil || toaddresspuk == nil {
-//				toaddresspuk, err = crypto.UnmarshalPubkey(item.PubKey)
-//				if err != nil || toaddresspuk == nil {
-//					return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) toaddresspuk [puk:%s] is err: %s", netName, hex.EncodeToString(item.PubKey), err)
-//				}
-//			}
-//			toaddress := crypto.PubkeyToAddress(*toaddresspuk)
-//			if logs.To.String() != toaddress.String() {
-//				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), toaddress.String())
-//			}
-//		} else {
-//			fromAddr := common.BytesToAddress(item.Extra)
-//			if logs.To.String() != fromAddr.String() {
-//				return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) [toaddress : %s] not [toaddress2 : %s]", netName, logs.To.String(), fromAddr.String())
-//			}
-//		}
-//	}
-//
-//	amount2 := big.NewInt(0).Sub(item.Amount, item.FeeAmount)
-//	if item.AssetType == ExpandedTxConvert_Czz {
-//		amount2 = new(big.Int).Div(amount2, Int10)
-//	}
-//
-//	if logs.AmountIn.Cmp(amount2) != 0 {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) amount %d not %d", netName, logs.AmountIn, amount2)
-//	}
-//
-//	//var extTx *types.Transaction
-//	//Get the current block count.
-//	//if err := client.Call(&extTx, "eth_getTransactionByHash", TxHash); err != nil {
-//	//	return nil, ErrRpcErr
-//	//}
-//
-//	extTx := transactionMap[TxHash]
-//	if extTx == nil {
-//		return nil, fmt.Errorf("verifyConfirmEthereumTypeTx (%s) txjson is nil [txid:%s]", netName, TxHash)
-//	}
-//
-//	if err := CheckToAddress(ConvertType, netName, extTx); err != nil {
-//		return nil, err
-//	}
-//
-//	return item, nil
-//}
 
 func CheckToAddress(ConvertType uint8, netName string, extTx *types.Transaction) error {
 	// toaddress
@@ -1167,55 +1072,129 @@ func deriveChainId(v *big.Int) *big.Int {
 }
 
 func packInput(abiMethod string, params ...interface{}) []byte {
-	input, err := AbiTest.Pack(abiMethod, params...)
+	input, err := AbiTeWakaV3.Pack(abiMethod, params...)
 	if err != nil {
 		log.Error("packInput", "err", err)
 	}
 	return input
 }
 
-const TestABI = `[
-    {
-      "inputs": [],
-      "name": "Num",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "num",
-          "type": "uint256"
-        }
-      ],
-      "name": "add",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ]`
-
-const TeWakaABI = `
+const TeWakaV3ABI = `
 [
 	{
 		"inputs": [
 			{
 				"internalType": "uint256",
-				"name": "num",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amounts",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_burnHash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_fromNetworkType",
 				"type": "uint256"
 			}
 		],
-		"name": "add",
+		"name": "crossToMainChainMap",
 		"outputs": [],
+		"stateMutability": "payable",
 		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amounts",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_burnHash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_fromNetworkType",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_toNetworkType",
+				"type": "uint256"
+			}
+		],
+		"name": "betweenSideChainCrossMap",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	}
+]
+`
+
+const TeWakaABI = `
+[
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "from_",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountIn",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "amountOut",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "convertType",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "crossToken",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "bytes",
+				"name": "toInfo",
+				"type": "bytes"
+			},
+			{
+				"indexed": false,
+				"internalType": "address",
+				"name": "managerAddress",
+				"type": "address"
+			}
+		],
+		"name": "AtomBurnLog",
+		"type": "event"
 	},
     {
         "name":"mortgage",
@@ -1502,7 +1481,76 @@ const TeWakaABI = `
         "constant":false,
         "payable":false,
         "type":"function"
-    }
+    },
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amounts",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_burnHash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_fromNetworkType",
+				"type": "uint256"
+			},
+			{
+				"name": "tewaka",
+				"type": "address"
+			}
+		],
+		"name": "crossToMainChainMap",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_amounts",
+				"type": "uint256"
+			},
+			{
+				"internalType": "bytes32",
+				"name": "_burnHash",
+				"type": "bytes32"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_fromNetworkType",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_toNetworkType",
+				"type": "uint256"
+			},
+			{
+				"name": "tewaka",
+				"type": "address"
+			}
+		],
+		"name": "betweenSideChainCrossMap",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	}
 ]
 `
 
