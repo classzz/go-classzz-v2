@@ -53,7 +53,7 @@ var (
 		CIP_1:        big.NewInt(150_000),
 		CIP_2:        big.NewInt(170_000),
 		CIP_3:        big.NewInt(220_000),
-		CIP_4:        big.NewInt(1_000_000),
+		CIP_4:        big.NewInt(980_000),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
