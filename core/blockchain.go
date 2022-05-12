@@ -1689,7 +1689,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 	factors := make([]*big.Int, len(chain))
 
 	for i, block := range chain {
-		bc.chainConfig.ReChainId(block.Number())
 		headers[i] = block.Header()
 		seals[i] = verifySeals
 		amount, _ := bc.GetCurrentStakingByUser(headers[i].Coinbase)
@@ -1868,6 +1867,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, er
 		}
 		// Process block using the parent state as reference point
 		substart := time.Now()
+		bc.chainConfig.ReChainId(block.Number())
 		receipts, logs, usedGas, err := bc.processor.Process(block, statedb, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
