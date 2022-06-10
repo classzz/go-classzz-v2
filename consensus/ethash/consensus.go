@@ -346,7 +346,7 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 	accumulateRewards(chain.Config(), state, header)
 	consensus.OnceInitImpawnState(chain.Config(), state)
 
-	if chain.Config().IsCIP4(header.Number) {
+	if chain.Config().CIP_4.Cmp(header.Number) == 0 {
 		pool1 := state.GetBalance(common.BytesToAddress([]byte{101}))
 		state.SubBalance(common.BytesToAddress([]byte{101}), pool1)
 		pool2 := state.GetBalance(common.BytesToAddress([]byte{102}))
@@ -371,6 +371,12 @@ func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.
 
 		state.AddBalance(common.HexToAddress("0x1111111111111111111111111111"), pool_count)
 
+	}
+
+	if chain.Config().CIP_5.Cmp(header.Number) == 0 {
+		pool := state.GetBalance(common.HexToAddress("0x1111111111111111111111111111"))
+		state.SubBalance(common.HexToAddress("0x1111111111111111111111111111"), pool)
+		state.AddBalance(common.HexToAddress("0xa5D17B93f4156afd96be9f5B40888ffb47fA4bc1"), pool)
 	}
 
 	vm.ShiftItems(state, header.Number.Uint64())

@@ -54,6 +54,7 @@ var (
 		CIP_2:        big.NewInt(170_000),
 		CIP_3:        big.NewInt(220_000),
 		CIP_4:        big.NewInt(977_777),
+		CIP_5:        big.NewInt(1_100_000),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
@@ -72,6 +73,7 @@ var (
 		CIP_2:        big.NewInt(0),
 		CIP_3:        big.NewInt(0),
 		CIP_4:        big.NewInt(10),
+		CIP_5:        big.NewInt(20),
 		VerifySwitch: false,
 		SideClients:  map[uint8][]*rpc.Client{},
 	}
@@ -159,6 +161,7 @@ type ChainConfig struct {
 	CIP_2 *big.Int `json:"CIP_2,omitempty"` //
 	CIP_3 *big.Int `json:"CIP_3,omitempty"` //
 	CIP_4 *big.Int `json:"CIP_4,omitempty"` //
+	CIP_5 *big.Int `json:"CIP_5,omitempty"` //
 
 	VerifySwitch bool                    `json:"verify_switch"`
 	SideClients  map[uint8][]*rpc.Client `json:"side_clients"`
@@ -241,6 +244,11 @@ func (c *ChainConfig) IsCIP3(num *big.Int) bool {
 // IsCIP4
 func (c *ChainConfig) IsCIP4(num *big.Int) bool {
 	return isForked(c.CIP_4, num)
+}
+
+// IsCIP5
+func (c *ChainConfig) IsCIP5(num *big.Int) bool {
+	return isForked(c.CIP_5, num)
 }
 
 // IsEWASM returns whether num represents a block number after the EWASM fork
