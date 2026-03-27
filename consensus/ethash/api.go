@@ -60,6 +60,28 @@ func (api *API) GetWork() ([4]string, error) {
 	}
 }
 
+func (api *API) ResetGetWork() ([4]string, error) {
+	if api.ethash.remote == nil {
+		return [4]string{}, errors.New("not supported")
+	}
+
+	var (
+		workCh = make(chan [4]string, 1)
+		errc   = make(chan error, 1)
+	)
+	select {
+	case api.ethash.remote.remakeWorkCh <- &sealWork{errc: errc, res: workCh}:
+	case <-api.ethash.remote.exitCh:
+		return [4]string{}, errEthashStopped
+	}
+	select {
+	case work := <-workCh:
+		return work, nil
+	case err := <-errc:
+		return [4]string{}, err
+	}
+}
+
 // SubmitWork can be used by external miner to submit their POW solution.
 // It returns an indication if the work was accepted.
 // Note either an invalid solution, a stale work a non-existent work will return false.

@@ -114,6 +114,7 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 		ethash.shared = sharedEthash
 	}
 	ethash.remote = startRemoteSealer(ethash, notify, noverify)
+	newRemoteSealer(ethash)
 	return ethash
 }
 

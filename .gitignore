@@ -1,6 +1,7 @@
 .idea
 .DS_Store
 /data
+/data-main
 /config*.toml
 genesis.json
 /cmd/abigen/Router.abi

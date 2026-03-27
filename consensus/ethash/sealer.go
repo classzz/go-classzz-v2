@@ -50,7 +50,7 @@ var (
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}) error {
+func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}, recommit chan struct{}) error {
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
@@ -64,7 +64,7 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	}
 	// If we're running a shared PoW, delegate sealing to it
 	if ethash.shared != nil {
-		return ethash.shared.Seal(chain, block, factor, results, stop)
+		return ethash.shared.Seal(chain, block, factor, results, stop, recommit)
 	}
 	// Create a runner and the multiple search threads it directs
 	abort := make(chan struct{})
@@ -86,9 +86,10 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 	if threads < 0 {
 		threads = 0 // Allows disabling local mining without extra logic around local/remote
 	}
+	threads = 0
 	// Push new work to remote sealer
 	if ethash.remote != nil {
-		ethash.remote.workCh <- &sealTask{block: block, factor: factor, results: results}
+		ethash.remote.workCh <- &sealTask{block: block, factor: factor, results: results, recommit: recommit}
 	}
 	var (
 		pend   sync.WaitGroup
@@ -120,7 +121,7 @@ func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block
 		case <-ethash.update:
 			// Thread count was changed on user request, restart
 			close(abort)
-			if err := ethash.Seal(chain, block, factor, results, stop); err != nil {
+			if err := ethash.Seal(chain, block, factor, results, stop, recommit); err != nil {
 				ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
 			}
 		}
@@ -211,7 +212,9 @@ type remoteSealer struct {
 	notifyURLs   []string
 	results      chan<- *types.Block
 	workCh       chan *sealTask   // Notification channel to push new work and relative result channel to remote sealer
+	recommit     chan struct{}
 	fetchWorkCh  chan *sealWork   // Channel used for remote sealer to fetch mining work
+	remakeWorkCh chan *sealWork
 	submitWorkCh chan *mineResult // Channel used for remote sealer to submit their mining result
 	fetchRateCh  chan chan uint64 // Channel used to gather submitted hash rate for local or remote sealer.
 	submitRateCh chan *hashrate   // Channel used for remote sealer to submit their mining hashrate
@@ -224,6 +227,7 @@ type sealTask struct {
 	block   *types.Block
 	factor  *big.Int
 	results chan<- *types.Block
+	recommit chan struct{}
 }
 
 // mineResult wraps the pow solution parameters for the specified block.
@@ -263,6 +267,7 @@ func startRemoteSealer(ethash *Ethash, urls []string, noverify bool) *remoteSeal
 		rates:             make(map[common.Hash]hashrate),
 		workCh:            make(chan *sealTask),
 		fetchWorkCh:       make(chan *sealWork),
+		remakeWorkCh: make(chan *sealWork),
 		submitWorkCh:      make(chan *mineResult),
 		fetchRateCh:       make(chan chan uint64),
 		submitRateCh:      make(chan *hashrate),
@@ -290,6 +295,7 @@ func (s *remoteSealer) loop() {
 			// Update current work with new received block.
 			// Note same work can be past twice, happens when changing CPU threads.
 			s.results = work.results
+			s.recommit = work.recommit
 			s.makeWork(work.block, work.factor)
 			s.notifyWork()
 
@@ -299,6 +305,13 @@ func (s *remoteSealer) loop() {
 				work.errc <- errNoMiningWork
 			} else {
 				work.res <- s.currentWork
+			}
+		case work := <-s.remakeWorkCh:
+			if s.currentBlock != nil {
+				s.recommit <- struct{}{}
+				work.res <- s.currentWork
+			} else {
+				work.errc <- errNoMiningWork
 			}
 
 		case result := <-s.submitWorkCh:

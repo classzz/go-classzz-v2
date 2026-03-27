@@ -18,9 +18,10 @@
 package consensus
 
 import (
+	"math/big"
+
 	"github.com/classzz/go-classzz-v2/core/vm"
 	"github.com/classzz/go-classzz-v2/log"
-	"math/big"
 
 	"github.com/classzz/go-classzz-v2/common"
 	"github.com/classzz/go-classzz-v2/core/state"
@@ -103,7 +104,7 @@ type Engine interface {
 	//
 	// Note, the method returns immediately and will send the result async. More
 	// than one result may also be returned depending on the consensus algorithm.
-	Seal(chain ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}) error
+	Seal(chain ChainHeaderReader, block *types.Block, factor *big.Int, results chan<- *types.Block, stop <-chan struct{}, recommit chan struct{}) error
 
 	// SealHash returns the hash of a block prior to it being sealed.
 	SealHash(header *types.Header) common.Hash
